@@ -1,0 +1,2666 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sleep Challenge | Login</title>
+    <style>
+      :root {
+        --bg: #0b1220;
+        --card: rgba(255, 255, 255, 0.08);
+        --card2: rgba(255, 255, 255, 0.12);
+        --text: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.68);
+        --line: rgba(255, 255, 255, 0.14);
+        --brand: #8b5cf6;
+        --brand2: #22d3ee;
+        --danger: #fb7185;
+        --ok: #34d399;
+        --shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100svh;
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+        background:
+          radial-gradient(1200px 600px at 15% 10%, rgba(139, 92, 246, 0.30), transparent 55%),
+          radial-gradient(1000px 700px at 85% 30%, rgba(34, 211, 238, 0.22), transparent 55%),
+          radial-gradient(1000px 700px at 55% 95%, rgba(52, 211, 153, 0.15), transparent 60%),
+          linear-gradient(180deg, #07101f, #050815);
+        display: grid;
+        place-items: center;
+        padding: 28px 16px;
+      }
+
+      .app {
+        width: 100%;
+        max-width: 960px;
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 18px;
+        align-items: stretch;
+      }
+
+      @media (max-width: 880px) {
+        .app { grid-template-columns: 1fr; }
+      }
+
+      .app-single {
+        max-width: 820px;
+        grid-template-columns: 1fr;
+      }
+
+      .app[hidden] { display: none; }
+
+      /* Auth: landing = hero only (no login/signup card). Hero box matches AI feedback card width + min-height; wider than tall on narrow viewports. */
+      #authPage {
+        justify-self: center;
+        width: 100%;
+      }
+
+      #authPage.auth-landing {
+        grid-template-columns: 1fr;
+        width: min(100%, calc(100vw - 32px));
+        max-width: 820px;
+        align-items: stretch;
+      }
+
+      #authPage.auth-landing #authCard {
+        display: none !important;
+      }
+
+      #authPage.auth-landing .hero {
+        width: 100%;
+        min-height: 56vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        box-sizing: border-box;
+        padding: clamp(18px, 3.5vmin, 28px);
+      }
+
+      @media (max-aspect-ratio: 12/10) {
+        #authPage.auth-landing .hero {
+          min-height: unset;
+          aspect-ratio: 3 / 2;
+        }
+      }
+
+      #authPage.auth-landing .logo {
+        width: clamp(40px, 11vmin, 54px);
+        height: clamp(40px, 11vmin, 54px);
+        border-radius: clamp(12px, 3vmin, 18px);
+        font-size: clamp(16px, 4.5vmin, 22px);
+      }
+
+      #authPage.auth-landing .brand {
+        gap: clamp(8px, 2vmin, 14px);
+      }
+
+      #authPage.auth-landing .brand h1 {
+        font-size: clamp(17px, 4.5vmin, 24px);
+      }
+
+      #authPage.auth-landing .brand p {
+        margin: clamp(2px, 0.5vmin, 6px) 0 0;
+        font-size: clamp(12px, 2.8vmin, 15px);
+      }
+
+      #authPage.auth-landing .hero .copy {
+        margin-top: clamp(14px, 3.5vmin, 22px);
+      }
+
+      #authPage.auth-landing .copy h2 {
+        font-size: clamp(22px, 5.8vmin, 32px);
+        margin: 0 0 clamp(6px, 1.5vmin, 10px);
+      }
+
+      #authPage.auth-landing .copy .sub {
+        font-size: clamp(13px, 3.2vmin, 16px);
+        max-width: min(48ch, 100%);
+      }
+
+      #authPage.auth-landing .hero-auth-cta {
+        margin-top: clamp(16px, 4vmin, 24px);
+      }
+
+      #authPage.auth-landing .hero-auth-cta-label {
+        font-size: clamp(28px, 8.5vmin, 54px);
+      }
+
+      #authPage:not(.auth-landing) {
+        grid-template-columns: 1fr;
+        max-width: min(calc(100vw - 32px), 520px);
+        align-items: stretch;
+      }
+
+      #authPage:not(.auth-landing) .hero {
+        display: none;
+      }
+
+      .hero {
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+        border-radius: 18px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        position: relative;
+        padding: 22px;
+      }
+
+      .hero::before {
+        content: "";
+        position: absolute;
+        inset: -200px -120px auto auto;
+        width: 520px;
+        height: 520px;
+        background: radial-gradient(circle at 30% 30%, rgba(139, 92, 246, 0.38), transparent 60%),
+                    radial-gradient(circle at 70% 65%, rgba(34, 211, 238, 0.22), transparent 58%);
+        filter: blur(2px);
+        transform: rotate(18deg);
+        pointer-events: none;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .logo {
+        width: 42px;
+        height: 42px;
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,0.18);
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.85), rgba(34, 211, 238, 0.70));
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+      }
+
+      .brand h1 {
+        margin: 0;
+        font-size: 18px;
+        letter-spacing: -0.02em;
+      }
+
+      .brand p {
+        margin: 2px 0 0;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .hero .copy {
+        margin-top: 18px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .copy h2 {
+        margin: 0 0 8px;
+        font-size: 26px;
+        line-height: 1.2;
+        letter-spacing: -0.03em;
+      }
+
+      .copy .sub {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.55;
+        font-size: 14px;
+        max-width: 52ch;
+      }
+
+      .hero-auth-cta {
+        margin-top: 20px;
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .hero-auth-cta-label {
+        display: inline-flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 0;
+        color: #ffffff;
+        font-size: clamp(51px, 7.5vw, 72px);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+      }
+
+      .hero-auth-link {
+        appearance: none;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        font-weight: inherit;
+        letter-spacing: inherit;
+        line-height: inherit;
+        cursor: pointer;
+        text-decoration: none;
+      }
+
+      .hero-auth-link:hover {
+        text-decoration: underline;
+        text-underline-offset: 0.08em;
+      }
+
+      .hero-auth-link:focus-visible {
+        outline: 2px solid rgba(255, 255, 255, 0.65);
+        outline-offset: 3px;
+        border-radius: 4px;
+      }
+
+      .hero-auth-sep {
+        color: inherit;
+        pointer-events: none;
+        user-select: none;
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04));
+        border-radius: 18px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        border-bottom: 1px solid rgba(255,255,255,0.12);
+        background: rgba(255,255,255,0.04);
+      }
+
+      .tab {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        padding: 14px 12px;
+        color: rgba(255,255,255,0.75);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        cursor: pointer;
+      }
+
+      .tab[aria-selected="true"] {
+        color: rgba(255,255,255,0.95);
+        background: linear-gradient(180deg, rgba(139, 92, 246, 0.25), rgba(255,255,255,0.02));
+      }
+
+      .panel {
+        padding: 18px;
+        display: none;
+      }
+
+      .panel[aria-hidden="false"] { display: block; }
+
+      .title {
+        margin: 0 0 6px;
+        font-size: 18px;
+        letter-spacing: -0.02em;
+      }
+
+      .desc {
+        margin: 0 0 16px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      form { display: grid; gap: 12px; }
+
+      .field { display: grid; gap: 6px; }
+
+      label {
+        font-size: 12px;
+        color: rgba(255,255,255,0.80);
+        font-weight: 650;
+      }
+
+      input, select {
+        width: 100%;
+        padding: 11px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.14);
+        background: rgba(8, 14, 28, 0.55);
+        color: rgba(255,255,255,0.92);
+        outline: none;
+      }
+
+      input::placeholder { color: rgba(255,255,255,0.38); }
+
+      input:focus, select:focus {
+        border-color: rgba(34, 211, 238, 0.55);
+        box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.12);
+      }
+
+      .password-input-wrap {
+        position: relative;
+      }
+
+      .password-input-wrap > input {
+        padding-right: 44px;
+      }
+
+      .password-toggle {
+        position: absolute;
+        right: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 10px;
+        background: transparent;
+        color: rgba(255, 255, 255, 0.55);
+        cursor: pointer;
+      }
+
+      .password-toggle:hover {
+        color: rgba(255, 255, 255, 0.88);
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .password-toggle:focus-visible {
+        outline: 2px solid rgba(34, 211, 238, 0.55);
+        outline-offset: 2px;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      @media (max-width: 420px) {
+        .row { grid-template-columns: 1fr; }
+      }
+
+      .actions {
+        display: grid;
+        gap: 10px;
+        margin-top: 4px;
+      }
+
+      .btn {
+        appearance: none;
+        border: 0;
+        cursor: pointer;
+        border-radius: 12px;
+        padding: 12px 12px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+
+      .btn.primary {
+        color: rgba(255,255,255,0.95);
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.90), rgba(34, 211, 238, 0.80));
+        box-shadow: 0 18px 38px rgba(0,0,0,0.35);
+      }
+
+      .btn.secondary {
+        color: rgba(255,255,255,0.90);
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.14);
+      }
+
+      .fineprint {
+        margin: 6px 0 0;
+        font-size: 12px;
+        color: rgba(255,255,255,0.60);
+        line-height: 1.45;
+      }
+
+      .signup-name-hint {
+        min-height: 1.35em;
+        margin: 4px 0 0;
+        font-size: 12px;
+        line-height: 1.45;
+        color: var(--danger);
+      }
+
+      .signup-name-hint:empty {
+        margin-top: 0;
+        min-height: 0;
+      }
+
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 18px;
+        transform: translateX(-50%);
+        background: rgba(10, 14, 26, 0.82);
+        border: 1px solid rgba(255,255,255,0.16);
+        color: rgba(255,255,255,0.92);
+        padding: 10px 12px;
+        border-radius: 12px;
+        box-shadow: 0 22px 60px rgba(0,0,0,0.55);
+        backdrop-filter: blur(10px);
+        max-width: min(560px, calc(100vw - 28px));
+        display: none;
+      }
+
+      .toast[aria-hidden="false"] { display: block; }
+
+      .toast .msg { font-size: 13px; line-height: 1.5; }
+
+      .toast[data-kind="ok"] { border-color: rgba(52, 211, 153, 0.35); }
+      .toast[data-kind="danger"] { border-color: rgba(251, 113, 133, 0.35); }
+
+      .chip {
+        font-size: 12px;
+        color: rgba(255,255,255,0.80);
+        border: 1px solid rgba(255,255,255,0.14);
+        background: rgba(255,255,255,0.06);
+        padding: 8px 10px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0;
+      }
+
+      .country-flag-wrap {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        vertical-align: middle;
+        margin: 0 1px;
+        max-width: min(160px, 42vw);
+        direction: ltr;
+        unicode-bidi: isolate;
+      }
+
+      .country-flag-label {
+        display: block;
+        font-size: 10px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.82);
+        text-align: center;
+        line-height: 1.2;
+        margin-top: 3px;
+        word-break: break-word;
+        hyphens: auto;
+      }
+
+      .country-flag-label[hidden] {
+        display: none !important;
+      }
+
+      .country-flag-btn {
+        margin: 0;
+        padding: 0 2px;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+        font-size: 1.35em;
+        line-height: 1;
+        vertical-align: middle;
+        border-radius: 4px;
+        color: inherit;
+        /* Regional-indicator flags need an emoji-capable font; KR UI fonts often omit them. */
+        font-family: "Apple Color Emoji", "Segoe UI Flag", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", emoji, sans-serif;
+        font-variant-emoji: emoji;
+        direction: ltr;
+        unicode-bidi: isolate;
+      }
+
+      .country-flag-btn:hover {
+        background: rgba(255,255,255,0.12);
+      }
+
+      .country-flag-btn:focus-visible {
+        outline: 2px solid var(--brand2);
+        outline-offset: 2px;
+      }
+
+      .linkbtn {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        color: rgba(255,255,255,0.85);
+        cursor: pointer;
+        font-weight: 750;
+        padding: 8px 10px;
+        border-radius: 10px;
+      }
+
+      .linkbtn:hover { background: rgba(255,255,255,0.08); }
+
+      .sleep-section {
+        margin-top: 0;
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .sleep-section[hidden] { display: none; }
+
+      .sleep-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+
+      .sleep-title {
+        margin: 0;
+        font-size: 16px;
+        letter-spacing: -0.02em;
+      }
+
+      .sleep-sub {
+        margin: 2px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .sleep-timer {
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+
+      /* Start Bedtime | Wake Up width ratio by time of day (local clock):
+         8:00 PM–2:00 AM → 3:1  |  5:00 AM–11:59 AM → 1:3  |  otherwise → 1:1
+         Toggled from JS: setButtonPriorityStyles() + getPriorityWindow(). */
+      .sleep-controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .sleep-controls.bedtime-priority {
+        grid-template-columns: 3fr 1fr;
+      }
+
+      .sleep-controls.wakeup-priority {
+        grid-template-columns: 1fr 3fr;
+      }
+
+      .sleep-btn {
+        appearance: none;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 14px;
+        background: rgba(255,255,255,0.06);
+        color: var(--text);
+        cursor: pointer;
+        min-height: 86px;
+        padding: 14px 14px;
+        font-weight: 800;
+        font-size: 16px;
+        transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+      }
+
+      .sleep-btn:hover { transform: translateY(-1px); }
+
+      .sleep-btn.priority {
+        min-height: 144px;
+        font-size: 24px;
+        border-color: rgba(34, 211, 238, 0.55);
+        background: linear-gradient(180deg, rgba(34, 211, 238, 0.20), rgba(255,255,255,0.05));
+      }
+
+      .sleep-btn.deemphasis {
+        min-height: 48px;
+        font-size: 14px;
+        opacity: 0.9;
+      }
+
+      .tracker-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .sleep-btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .sleep-minus20-wrap {
+        margin-top: 12px;
+      }
+
+      .sleep-minus20-label {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        cursor: pointer;
+        font-size: 13px;
+        line-height: 1.45;
+        color: rgba(255, 255, 255, 0.82);
+        font-weight: 550;
+      }
+
+      .sleep-minus20-label input[type="checkbox"] {
+        width: auto;
+        margin: 3px 0 0;
+        flex-shrink: 0;
+        accent-color: var(--brand2);
+        cursor: pointer;
+      }
+
+      .sleep-minus20-label.sleep-minus20-label-locked {
+        cursor: not-allowed;
+        opacity: 0.65;
+      }
+
+      .sleep-minus20-label.sleep-minus20-label-locked input {
+        cursor: not-allowed;
+      }
+
+      .sleep-meta {
+        margin-top: 10px;
+        color: rgba(255,255,255,0.78);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .click-count {
+        margin-left: 6px;
+        color: #ffffff;
+        font-weight: 900;
+      }
+
+      .click-count.blink {
+        animation: clickBlink 0.75s infinite;
+      }
+
+      @keyframes clickBlink {
+        0% { color: #ffffff; }
+        50% { color: #ff4d4d; }
+        100% { color: #ffffff; }
+      }
+
+      .progress-page {
+        min-height: 56vh;
+        display: grid;
+        place-items: center;
+        position: relative;
+      }
+
+      .progress-wrap {
+        text-align: center;
+        display: grid;
+        gap: 14px;
+        justify-items: center;
+      }
+
+      .progress-head {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .progress-title {
+        margin: 0;
+        font-size: clamp(34px, 6.5vw, 68px);
+        letter-spacing: -0.03em;
+        line-height: 1.1;
+      }
+
+      .progress-count {
+        display: inline-block;
+        animation: aiCountBlink 0.8s infinite;
+      }
+
+      .progress-sub {
+        margin: 0;
+        font-size: 14px;
+        color: rgba(255,255,255,0.70);
+      }
+
+      .daily-feedback {
+        margin-top: 8px;
+        display: grid;
+        gap: 6px;
+        justify-items: center;
+        text-align: center;
+      }
+
+      .daily-feedback-main {
+        margin: 0;
+        font-size: clamp(20px, 3.6vw, 36px);
+        font-weight: 900;
+        letter-spacing: -0.02em;
+      }
+
+      .daily-feedback-sub {
+        margin: 0;
+        font-size: 14px;
+        color: rgba(255,255,255,0.78);
+      }
+
+      .next-feedback-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.35);
+        background: rgba(255,255,255,0.10);
+        color: #ffffff;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        cursor: pointer;
+      }
+
+      .next-feedback-btn svg {
+        width: 22px;
+        height: 22px;
+        flex-shrink: 0;
+      }
+
+      .next-feedback-btn svg path {
+        fill: currentColor;
+      }
+
+      .next-feedback-btn:hover {
+        transform: translateY(-1px);
+        background: rgba(255,255,255,0.16);
+      }
+
+      .next-feedback-btn[hidden] { display: none; }
+
+      .feedback-score-nav-btn {
+        position: absolute;
+        right: 18px;
+        bottom: 70px;
+        z-index: 2;
+      }
+
+      #sleepScorePage .sleep-score-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: min(52vh, 520px);
+      }
+
+      .sleep-score-hero {
+        margin: 10px 8px 0;
+        padding: 18px 16px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.06);
+        text-align: center;
+        display: grid;
+        gap: 10px;
+        justify-items: center;
+        align-content: center;
+      }
+
+      .sleep-score-level-img {
+        display: block;
+        width: min(200px, 52vw);
+        max-height: 200px;
+        height: auto;
+        object-fit: contain;
+        margin: 0 auto 4px;
+        border-radius: 12px;
+      }
+
+      .sleep-score-level-img--hidden {
+        display: none !important;
+      }
+
+      .sleep-score-value {
+        margin: 0;
+        font-size: clamp(30px, 7vw, 52px);
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        background: linear-gradient(135deg, #c4b5fd, #22d3ee, #34d399);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      .sleep-score-level {
+        margin: 0;
+        font-size: clamp(17px, 3.2vw, 24px);
+        font-weight: 850;
+        letter-spacing: -0.02em;
+      }
+
+      .sleep-score-detail {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.55;
+        color: rgba(255, 255, 255, 0.72);
+        max-width: 42ch;
+      }
+
+      .sleep-score-empty {
+        color: rgba(255, 255, 255, 0.55);
+        font-size: 14px;
+      }
+
+      .return-sleep-btn {
+        position: absolute;
+        right: 18px;
+        bottom: 18px;
+        appearance: none;
+        border: 1px solid rgba(255,255,255,0.28);
+        border-radius: 12px;
+        padding: 10px 14px;
+        color: #ffffff;
+        font-weight: 800;
+        cursor: pointer;
+        background: linear-gradient(120deg, #22d3ee, #8b5cf6, #34d399, #67e8f9, #c4b5fd);
+        background-size: 260% 260%;
+        background-position: 0% 50%;
+        box-shadow: 0 14px 32px rgba(0, 0, 0, 0.34);
+        animation: auroraGradientFlow 2.4s ease-in-out infinite;
+      }
+
+      .return-sleep-btn:hover {
+        transform: translateY(-1px);
+      }
+
+      @keyframes auroraGradientFlow {
+        0% {
+          background-position: 0% 50%;
+          box-shadow: 0 14px 32px rgba(34, 211, 238, 0.22);
+        }
+        50% {
+          background-position: 100% 50%;
+          box-shadow: 0 14px 32px rgba(167, 139, 250, 0.24);
+        }
+        100% {
+          background-position: 0% 50%;
+          box-shadow: 0 14px 32px rgba(52, 211, 153, 0.22);
+        }
+      }
+
+      @keyframes aiCountBlink {
+        0% { color: #34d399; }
+        50% { color: #c4b5fd; }
+        100% { color: #34d399; }
+      }
+
+      @keyframes writingTextBlink {
+        0% { color: #ffffff; }
+        50% { color: #9ca3af; }
+        100% { color: #ffffff; }
+      }
+
+      .writing-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 12px;
+        padding-bottom: 0;
+      }
+
+      .writing-divider {
+        border: 0;
+        height: 1px;
+        margin: 6px 0 0;
+        background: rgba(255, 255, 255, 0.14);
+      }
+
+      .feedback-page {
+        min-height: 56vh;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .feedback-page-title {
+        margin: 0 0 2px 8px;
+        font-size: clamp(18px, 2.8vw, 30px);
+        font-weight: 900;
+        letter-spacing: -0.02em;
+        color: #ffffff;
+      }
+
+      .ai-feedback-loading {
+        margin: 12px 8px 0;
+        padding: 18px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 15px;
+        line-height: 1.5;
+        animation: writingTextBlink 1.25s ease-in-out infinite;
+      }
+
+      .ai-feedback-error {
+        margin: 8px;
+        padding: 14px 16px;
+        border-radius: 12px;
+        border: 1px solid rgba(251, 113, 133, 0.45);
+        background: rgba(251, 113, 133, 0.12);
+        color: #fecdd3;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      .ai-feedback-meta {
+        margin: 0 8px;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.55);
+      }
+
+      .ai-feedback-result {
+        margin: 0 4px 8px;
+        padding: 0 4px 12px;
+        flex: 1;
+        min-height: 120px;
+      }
+
+      .ai-feedback-body {
+        margin-top: 10px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .ai-feedback-para {
+        margin: 0;
+        font-size: 15px;
+        line-height: 1.55;
+        color: rgba(255, 255, 255, 0.9);
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .ai-feedback-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin: 8px 8px 0;
+      }
+
+      .ai-feedback-retry {
+        appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 10px;
+        padding: 8px 14px;
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .ai-feedback-retry:hover {
+        background: rgba(255, 255, 255, 0.16);
+      }
+
+      .home-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.28);
+        background: rgba(255,255,255,0.08);
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+      }
+
+      .home-btn:hover {
+        background: rgba(255,255,255,0.14);
+        transform: translateY(-1px);
+      }
+
+      .home-btn svg {
+        width: 23px;
+        height: 23px;
+        fill: #ffffff;
+      }
+
+      .country-field { margin-top: 4px; }
+
+      .country-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 14px;
+      }
+
+      .country-prompt {
+        font-size: 13px;
+        font-weight: 650;
+        color: rgba(255, 255, 255, 0.88);
+        flex: 0 1 auto;
+      }
+
+      .country-input-wrap {
+        position: relative;
+        flex: 1 1 220px;
+        min-width: min(100%, 240px);
+      }
+
+      .country-search {
+        width: 100%;
+        padding: 11px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.14);
+        background: rgba(8, 14, 28, 0.55);
+        color: rgba(255,255,255,0.92);
+        outline: none;
+        font-size: 14px;
+      }
+
+      .country-search:focus {
+        border-color: rgba(34, 211, 238, 0.55);
+        box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.12);
+      }
+
+      .country-dropdown {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: calc(100% + 6px);
+        max-height: 260px;
+        overflow-y: auto;
+        z-index: 60;
+        border: 1px solid rgba(255,255,255,0.16);
+        border-radius: 12px;
+        background: rgba(10, 14, 28, 0.98);
+        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        padding: 4px 0;
+      }
+
+      .country-dropdown button {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 9px 12px;
+        border: 0;
+        background: transparent;
+        color: rgba(255,255,255,0.92);
+        cursor: pointer;
+        font-size: 13px;
+      }
+
+      .country-dropdown button:hover,
+      .country-dropdown button.country-option-active {
+        background: rgba(255,255,255,0.09);
+      }
+
+      .country-dropdown .country-more {
+        padding: 8px 12px;
+        font-size: 11px;
+        color: rgba(255,255,255,0.55);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app app-single auth-landing" id="authPage" aria-label="Sleep Challenge Login/Signup">
+      <section class="hero" aria-label="Introduction">
+        <div class="brand">
+          <div class="logo" aria-hidden="true">Z</div>
+          <div>
+            <h1>Sleep Challenge</h1>
+            <p>Adolescent Sleep Management Challenge</p>
+          </div>
+        </div>
+
+        <div class="copy">
+          <h2>Today, I will sleep better.</h2>
+          <p class="sub">
+            You can record sleep data with the buttons that show up at the next page.<br />
+            Time is still recorded even if you close the app.
+          </p>
+        </div>
+
+        <div class="hero-auth-cta" aria-label="Log in or sign up">
+          <span class="hero-auth-cta-label">
+            <button type="button" class="hero-auth-link" id="heroGoLoginBtn">Log In</button><span class="hero-auth-sep" aria-hidden="true"> / </span><button type="button" class="hero-auth-link" id="heroGoSignupBtn">Sign Up</button>
+          </span>
+        </div>
+      </section>
+
+      <section class="card" id="authCard" aria-label="Authentication" hidden inert>
+        <div class="panel" id="panel-login" role="region" aria-label="Login" aria-hidden="false">
+          <h3 class="title">Login</h3>
+          <p class="desc">Log in with your registered email and password.</p>
+
+          <form id="loginForm" autocomplete="on">
+            <div class="field">
+              <label for="loginEmail">Email</label>
+              <input id="loginEmail" name="email" type="email" placeholder="ID: " required />
+            </div>
+            <div class="field">
+              <label for="loginPassword">Password</label>
+              <div class="password-input-wrap">
+                <input id="loginPassword" name="password" type="password" placeholder="Password: " required minlength="8" />
+                <button type="button" class="password-toggle" data-password-for="loginPassword" aria-label="Show password" aria-pressed="false"></button>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="btn primary" type="submit">Login</button>
+              <button class="btn secondary" type="button" id="goSignupBtn">Go to Signup</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel" id="panel-signup" role="region" aria-label="Sign up" aria-hidden="true">
+          <h3 class="title">Signup</h3>
+          <p class="desc">Create an account with basic information. Age is optional.</p>
+
+          <form id="signupForm" autocomplete="on">
+            <div class="row">
+              <div class="field">
+                <label for="signupName">Nickname</label>
+                <input id="signupName" name="name" type="text" placeholder="e.g., DreamWalker" required minlength="2" maxlength="16" autocomplete="nickname" />
+                <p class="signup-name-hint" id="signupNameHint" aria-live="polite"></p>
+              </div>
+              <div class="field">
+                <label for="signupAge">Age (Optional)</label>
+                <input id="signupAge" name="age" type="number" placeholder="e.g., 16" min="13" max="40" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="signupEmail">Email</label>
+              <input id="signupEmail" name="email" type="email" placeholder="name@example.com" required />
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label for="signupPassword">Password</label>
+                <div class="password-input-wrap">
+                  <input id="signupPassword" name="password" type="password" placeholder="At least 8 characters" required minlength="8" />
+                  <button type="button" class="password-toggle" data-password-for="signupPassword" aria-label="Show password" aria-pressed="false"></button>
+                </div>
+              </div>
+              <div class="field">
+                <label for="signupPassword2">Confirm Password</label>
+                <div class="password-input-wrap">
+                  <input id="signupPassword2" name="password2" type="password" placeholder="Enter again" required minlength="8" />
+                  <button type="button" class="password-toggle" data-password-for="signupPassword2" aria-label="Show password" aria-pressed="false"></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="field country-field">
+              <div class="country-row">
+                <span class="country-prompt" id="countryPrompt">Select or search your country of residence.<br />Choose <strong>ANONYMOUS</strong> for private.</span>
+                <div class="country-input-wrap">
+                  <input type="hidden" id="signupCountry" name="country" value="" />
+                  <input
+                    type="text"
+                    id="signupCountrySearch"
+                    class="country-search"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="search by country name..."
+                    aria-autocomplete="list"
+                    aria-controls="signupCountryDropdown"
+                    aria-expanded="false"
+                    role="combobox"
+                  />
+                  <div id="signupCountryDropdown" class="country-dropdown" hidden role="listbox" aria-label="Countries"></div>
+                </div>
+              </div>
+            </div>
+
+
+            <div class="actions">
+              <button class="btn primary" type="submit">Done!</button>
+            </div>
+          </form>
+        </div>
+
+      </section>
+    </main>
+
+    <main class="app app-single" id="trackerPage" aria-label="Sleep Tracker Page" hidden>
+      <section class="card" aria-label="Sleep Data Collection">
+        <div class="panel sleep-section" id="sleepSection" aria-hidden="false">
+          <div class="tracker-topbar">
+            <div class="chip" id="trackerSessionChip">Session: -</div>
+            <button class="linkbtn" type="button" id="trackerLogoutBtn">Logout</button>
+          </div>
+
+          <div class="sleep-head">
+            <div>
+              <h3 class="sleep-title">Sleep Data Collection</h3>
+              <p class="sleep-sub">After login, use bedtime/wakeup buttons. Both buttons are always available.</p>
+            </div>
+            <div class="sleep-timer" id="activeTimer">00:00:00</div>
+          </div>
+
+          <div class="sleep-controls">
+            <button type="button" class="sleep-btn" id="bedtimeBtn">Start Bedtime <span class="click-count">(2/2)</span></button>
+            <button type="button" class="sleep-btn" id="wakeupBtn">Are U Awoke? <span class="click-count">(0/2)</span></button>
+          </div>
+
+          <div class="sleep-minus20-wrap">
+            <label class="sleep-minus20-label" for="minus20Correction">
+              <input type="checkbox" id="minus20Correction" checked />
+              <span>minus 20 minutes for more accurate result?</span>
+            </label>
+          </div>
+
+          <p class="fineprint" style="margin-top:12px;">
+            During your first week, AI feedback may be less accurate because baseline data is still being collected.
+          </p>
+
+          <div class="sleep-meta" id="sleepMeta">Log in to use sleep tracking features.</div>
+        </div>
+      </section>
+    </main>
+
+    <main class="app app-single" id="aiProgressPage" aria-label="AI Feedback Progress Page" hidden>
+      <section class="card progress-page" aria-label="AI Feedback Progress">
+        <div class="panel progress-wrap">
+          <div class="progress-head">
+            <h2 class="progress-title" id="progressTitle">
+              Until AI feedbacks: <span class="progress-count" id="progressCount">(1/7)</span>
+            </h2>
+            <button type="button" class="next-feedback-btn" id="nextFeedbackBtn" hidden aria-label="Continue to AI feedback">
+              <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22">
+                <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z" />
+              </svg>
+            </button>
+          </div>
+          <p class="progress-sub">Get a not-the-best AI feedback?</p>
+          <div class="daily-feedback">
+            <p class="daily-feedback-main" id="dailySleepTime">Your sleep time: (00:00:00)</p>
+            <p class="daily-feedback-sub" id="dailyCompareText">Log one more day to compare with yesterday.</p>
+          </div>
+        </div>
+        <button type="button" class="return-sleep-btn" id="returnSleepBtn">Return to sleep</button>
+      </section>
+    </main>
+
+    <main class="app app-single" id="aiFeedbackPage" aria-label="AI Feedback Page" hidden>
+      <section class="card feedback-page" aria-label="AI sleep feedback">
+        <div class="panel" aria-hidden="false">
+          <div class="writing-topbar">
+            <h2 class="feedback-page-title" id="aiFeedbackPageTitle">AI sleep feedback</h2>
+            <button type="button" class="home-btn" id="feedbackHomeBtn" aria-label="Back to sleep tracker">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3.2 3 10.4v10.4a1 1 0 0 0 1 1h5.5a1 1 0 0 0 1-1v-5h3v5a1 1 0 0 0 1 1H20a1 1 0 0 0 1-1V10.4L12 3.2z"/>
+              </svg>
+            </button>
+          </div>
+          <hr class="writing-divider" aria-hidden="true" />
+          <p class="ai-feedback-meta" id="aiFeedbackMeta" aria-live="polite"></p>
+          <div class="ai-feedback-loading" id="aiFeedbackLoading">Connecting to the server and generating feedback…</div>
+          <div class="ai-feedback-error" id="aiFeedbackError" hidden role="alert"></div>
+          <div class="ai-feedback-result" id="aiFeedbackResult" hidden>
+            <div class="ai-feedback-body" id="aiFeedbackBody"></div>
+          </div>
+          <div class="ai-feedback-actions">
+            <button type="button" class="ai-feedback-retry" id="aiFeedbackRetryBtn" hidden>Retry</button>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="next-feedback-btn feedback-score-nav-btn"
+          id="feedbackScoreNavBtn"
+          aria-label="View sleep score and level"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22">
+            <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z" />
+          </svg>
+        </button>
+        <button type="button" class="return-sleep-btn" id="feedbackReturnSleepBtn">Return to sleep</button>
+      </section>
+    </main>
+
+    <main class="app app-single" id="sleepScorePage" aria-label="Sleep score page" hidden>
+      <section class="card feedback-page" aria-label="Sleep score and level">
+        <div class="panel sleep-score-panel" aria-hidden="false">
+          <div class="writing-topbar">
+            <h2 class="feedback-page-title" id="sleepScorePageTitle">Sleep score</h2>
+            <button type="button" class="home-btn" id="scoreBackToFeedbackBtn" aria-label="Back to AI feedback">
+              <svg viewBox="0 0 24 24" aria-hidden="true" width="23" height="23">
+                <path fill="#ffffff" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+              </svg>
+            </button>
+          </div>
+          <hr class="writing-divider" aria-hidden="true" />
+          <div class="sleep-score-hero" id="sleepScoreHero">
+            <img
+              id="sleepLevelImage"
+              class="sleep-score-level-img sleep-score-level-img--hidden"
+              alt=""
+              width="200"
+              height="200"
+              decoding="async"
+              loading="eager"
+            />
+            <p class="sleep-score-value" id="sleepScoreValue">—</p>
+            <p class="sleep-score-level" id="sleepScoreLevel">Lv.—</p>
+            <p class="sleep-score-detail" id="sleepScoreDetail"></p>
+          </div>
+        </div>
+        <button type="button" class="return-sleep-btn" id="scoreReturnSleepBtn">Return to sleep</button>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" aria-hidden="true" role="status" aria-live="polite" data-kind="ok">
+      <div class="msg" id="toastMsg">Notice message</div>
+    </div>
+
+    <script type="application/json" id="sleepLevelImageUrlsJson">{{ sleep_level_image_urls|default({}, true)|tojson }}</script>
+
+    <script>
+      /**
+       * Demo local authentication storage
+       * - users: { [email]: { name, age, country, passwordHash, createdAt } }
+       * - session: { email, name, country?, loggedInAt }
+       */
+      const STORAGE_KEYS = {
+        USERS: "sleepChallenge.users.v1",
+        SESSION: "sleepChallenge.session.v1",
+        SLEEP: "sleepChallenge.sleep.v1",
+      };
+
+      const $ = (id) => document.getElementById(id);
+
+      const PW_TOGGLE_SVG = {
+        hidden: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`,
+        visible: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3 7 10 7q1.52 0 3.11-.38"/><path d="M2 2l20 20"/></svg>`,
+      };
+
+      document.querySelectorAll(".password-toggle[data-password-for]").forEach((btn) => {
+        const input = $(btn.getAttribute("data-password-for"));
+        if (!input) return;
+        btn.innerHTML = PW_TOGGLE_SVG.hidden;
+        btn.addEventListener("click", () => {
+          const show = input.type === "password";
+          input.type = show ? "text" : "password";
+          btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+          btn.setAttribute("aria-pressed", show ? "true" : "false");
+          btn.innerHTML = show ? PW_TOGGLE_SVG.visible : PW_TOGGLE_SVG.hidden;
+        });
+      });
+
+      /** Stored as country when the user does not want a flag shown (must still pick explicitly). */
+      const COUNTRY_ANONYMOUS = "ANONYMOUS";
+
+      const ALL_COUNTRIES = ["Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan", "Bahamas, The", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi", "Cabo Verde", "Cambodia", "Cameroon", "Canada", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czechia", "Côte d'Ivoire", "Democratic People's Republic of Korea", "Democratic Republic of the Congo", "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia (Republic of The)", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran (Islamic Republic of)", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan", "Lao People's Democratic Republic", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia (Federated States of)", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands (Kingdom of the)", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Macedonia", "Norway", "Oman", "Pakistan", "Palau", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Republic of Korea", "Republic of Moldova", "Romania", "Russian Federation", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Sudan", "Spain", "Sri Lanka", "State of Palestine", "Sudan", "Suriname", "Sweden", "Switzerland", "Syrian Arab Republic", "Tajikistan", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkmenistan", "Tuvalu", "Türkiye", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom of Great Britain and Northern Ireland", "United Republic of Tanzania", "United States of America", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela (Bolivarian Republic of)", "Vietnam", "Yemen", "Zambia", "Zimbabwe"];
+      const COUNTRY_ALIASES = {"United States of America":["USA","U.S.","U.S.A.","America","United States","US","U.S"],"United Kingdom of Great Britain and Northern Ireland":["UK","U.K.","Britain","Great Britain","England","Scotland","Wales"],"Republic of Korea":["South Korea","Korea, South","ROK","R.O.K.","Korea Republic"],"Democratic People's Republic of Korea":["North Korea","Korea, North","DPRK","D.P.R.K."],"Iran (Islamic Republic of)":["Iran","Persia"],"Lao People's Democratic Republic":["Laos"],"Czechia":["Czech Republic"],"Eswatini":["Swaziland"],"Myanmar":["Burma"],"Côte d'Ivoire":["Ivory Coast","Cote d'Ivoire","Cote d Ivoire"],"Türkiye":["Turkey"],"Russian Federation":["Russia"],"Netherlands (Kingdom of the)":["Netherlands","Holland"],"United Republic of Tanzania":["Tanzania"],"Republic of Moldova":["Moldova"],"Micronesia (Federated States of)":["Micronesia","FSM"],"Venezuela (Bolivarian Republic of)":["Venezuela"],"Gambia (Republic of The)":["Gambia","The Gambia"],"Bahamas, The":["Bahamas","The Bahamas"],"State of Palestine":["Palestine"],"Vatican City":["Holy See","Vatican"],"North Macedonia":["Macedonia","FYROM","F.Y.R.O.M.","Former Yugoslav Republic of Macedonia"],"Brunei":["Brunei Darussalam"],"China":["PRC","People's Republic of China"],"Democratic Republic of the Congo":["DRC","Congo-Kinshasa","Congo Kinshasa"],"Congo":["Congo-Brazzaville","Congo Brazzaville","Republic of the Congo"],"United Arab Emirates":["UAE","U.A.E.","Emirates"],"Syrian Arab Republic":["Syria"],"Timor-Leste":["East Timor"],"Guinea Bissau":["Guinea-Bissau"],"Sao Tome and Principe":["São Tomé and Príncipe","Sao Tome"],"Cabo Verde":["Cape Verde"],"Burkina Faso":["Upper Volta"],"Benin":["Dahomey"],"Germany":["Deutschland","Federal Republic of Germany"],"France":["French Republic"],"Italy":["Italian Republic"],"Spain":["Kingdom of Spain"],"Japan":["Nippon"],"India":["Hindustan"],"Pakistan":["Islamic Republic of Pakistan"],"Bangladesh":["People's Republic of Bangladesh","BD"],"Indonesia":["Republic of Indonesia"],"Philippines":["Republic of the Philippines"],"Australia":["Commonwealth of Australia"],"Canada":["Dominion of Canada"],"Mexico":["United Mexican States"],"Argentina":["Argentine Republic"],"Brazil":["Federative Republic of Brazil"],"Chile":["Republic of Chile"],"Colombia":["Republic of Colombia"],"Peru":["Republic of Peru"],"South Africa":["RSA","Republic of South Africa"],"Nigeria":["Federal Republic of Nigeria"],"Kenya":["Republic of Kenya"],"Ethiopia":["Federal Democratic Republic of Ethiopia"],"Egypt":["Arab Republic of Egypt"],"Saudi Arabia":["KSA","Kingdom of Saudi Arabia"],"Israel":["State of Israel"],"Jordan":["Hashemite Kingdom of Jordan"],"Lebanon":["Lebanese Republic"],"Iraq":["Republic of Iraq"],"Afghanistan":["Islamic Republic of Afghanistan"],"Nepal":["Federal Democratic Republic of Nepal"],"Sri Lanka":["Democratic Socialist Republic of Sri Lanka"],"Singapore":["Republic of Singapore"],"Malaysia":["Federation of Malaysia"],"Thailand":["Kingdom of Thailand","Siam"],"Vietnam":["Viet Nam","Socialist Republic of Vietnam"],"Poland":["Republic of Poland"],"Ukraine":["UKR"],"Sweden":["Kingdom of Sweden"],"Norway":["Kingdom of Norway"],"Denmark":["Kingdom of Denmark"],"Finland":["Republic of Finland"],"Iceland":["Republic of Iceland"],"Ireland":["Republic of Ireland","Éire","Eire"],"Portugal":["Portuguese Republic"],"Greece":["Hellenic Republic"],"Hungary":["Republic of Hungary"],"Romania":["ROU"],"Bulgaria":["Republic of Bulgaria"],"Serbia":["Republic of Serbia"],"Croatia":["Republic of Croatia"],"Slovenia":["Republic of Slovenia"],"Slovakia":["Slovak Republic"],"Bosnia and Herzegovina":["BiH","Bosnia"],"Albania":["Republic of Albania"],"Montenegro":["Republic of Montenegro"],"Kazakhstan":["Republic of Kazakhstan"],"Uzbekistan":["Republic of Uzbekistan"],"Turkmenistan":["Turkmenia"],"Kyrgyzstan":["Kyrgyz Republic"],"Tajikistan":["Republic of Tajikistan"],"Mongolia":["State of Mongolia"],"Georgia":["Republic of Georgia"],"Armenia":["Republic of Armenia"],"Azerbaijan":["Republic of Azerbaijan"],"Belarus":["Republic of Belarus"],"Latvia":["Republic of Latvia"],"Lithuania":["Republic of Lithuania"],"Estonia":["Republic of Estonia"],"Luxembourg":["Grand Duchy of Luxembourg"],"Belgium":["Kingdom of Belgium"],"Switzerland":["Swiss Confederation"],"Austria":["Republic of Austria"],"Morocco":["Kingdom of Morocco"],"Algeria":["People's Democratic Republic of Algeria"],"Tunisia":["Republic of Tunisia"],"Libya":["State of Libya"],"Sudan":["Republic of the Sudan"],"Somalia":["Federal Republic of Somalia"],"Ghana":["Republic of Ghana"]};
+
+      /** ISO 3166-1 alpha-2 codes in the same order as ALL_COUNTRIES (for flag emoji). */
+      const COUNTRY_ISO3166_ALPHA2 = ["AF","AL","DZ","AD","AO","AG","AR","AM","AU","AT","AZ","BS","BH","BD","BB","BY","BE","BZ","BJ","BT","BO","BA","BW","BR","BN","BG","BF","BI","CV","KH","CM","CA","CF","TD","CL","CN","CO","KM","CG","CR","HR","CU","CY","CZ","CI","KP","CD","DK","DJ","DM","DO","EC","EG","SV","GQ","ER","EE","SZ","ET","FJ","FI","FR","GA","GM","GE","DE","GH","GR","GD","GT","GN","GW","GY","HT","HN","HU","IS","IN","ID","IR","IQ","IE","IL","IT","JM","JP","JO","KZ","KE","KI","KW","KG","LA","LV","LB","LS","LR","LY","LI","LT","LU","MG","MW","MY","MV","ML","MT","MH","MR","MU","MX","FM","MC","MN","ME","MA","MZ","MM","NA","NR","NP","NL","NZ","NI","NE","NG","MK","NO","OM","PK","PW","PA","PG","PY","PE","PH","PL","PT","QA","KR","MD","RO","RU","RW","KN","LC","VC","WS","SM","ST","SA","SN","RS","SC","SL","SG","SK","SI","SB","SO","ZA","SS","ES","LK","PS","SD","SR","SE","CH","SY","TJ","TH","TL","TG","TO","TT","TN","TM","TV","TR","UG","UA","AE","GB","TZ","US","UY","UZ","VU","VA","VE","VN","YE","ZM","ZW"];
+      const COUNTRY_ALPHA2 = Object.fromEntries(ALL_COUNTRIES.map((name, i) => [name, COUNTRY_ISO3166_ALPHA2[i]]));
+
+      function alpha2ToFlagEmoji(alpha2) {
+        const code = String(alpha2 || "").toUpperCase();
+        if (code.length !== 2) return "";
+        const base = 0x1f1e6;
+        const a = code.charCodeAt(0);
+        const b = code.charCodeAt(1);
+        if (a < 65 || a > 90 || b < 65 || b > 90) return "";
+        return String.fromCodePoint(base + (a - 65), base + (b - 65));
+      }
+
+      /** Match stored country to ISO alpha-2 even if spacing/apostrophe/alias differs from ALL_COUNTRIES keys. */
+      function resolveCountryForFlag(stored) {
+        const raw = String(stored || "")
+          .trim()
+          .replace(/[\u200B-\u200D\uFEFF]/g, "");
+        if (!raw) return { alpha2: "", displayName: "" };
+        if (normCountryQuery(raw) === normCountryQuery(COUNTRY_ANONYMOUS)) {
+          return { alpha2: "", displayName: COUNTRY_ANONYMOUS };
+        }
+        if (COUNTRY_ALPHA2[raw]) return { alpha2: COUNTRY_ALPHA2[raw], displayName: raw };
+        const qn = normCountryQuery(raw);
+        for (const c of ALL_COUNTRIES) {
+          if (normCountryQuery(c) === qn) return { alpha2: COUNTRY_ALPHA2[c], displayName: c };
+          for (const alias of COUNTRY_ALIASES[c] || []) {
+            if (normCountryQuery(alias) === qn) return { alpha2: COUNTRY_ALPHA2[c], displayName: c };
+          }
+        }
+        return { alpha2: "", displayName: raw };
+      }
+
+      function normCountryQuery(s) {
+        return String(s || "")
+          .replace(/[\u200B-\u200D\uFEFF]/g, "")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[’']/g, "'")
+          .replace(/\./g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function countrySearchStrings(canonical) {
+        const list = [canonical, ...(COUNTRY_ALIASES[canonical] || [])];
+        return list.map(normCountryQuery).filter(Boolean);
+      }
+
+      function countryMatchScore(canonical, qNorm) {
+        if (!qNorm) return 1;
+        let best = 0;
+        const cNorm = normCountryQuery(canonical);
+        if (cNorm === qNorm) return 1e6;
+        if (cNorm.startsWith(qNorm)) best = Math.max(best, 8e5 - cNorm.length);
+        if (cNorm.includes(qNorm)) best = Math.max(best, 6e5 - cNorm.length);
+
+        for (const s of countrySearchStrings(canonical)) {
+          if (s === qNorm) best = Math.max(best, 9e5);
+          else if (s.startsWith(qNorm)) best = Math.max(best, 7e5 - s.length);
+          else if (s.includes(qNorm)) best = Math.max(best, 5e5 - s.length);
+        }
+
+        if (qNorm.includes("south") && canonical === "Republic of Korea") best += 2e4;
+        if (qNorm.includes("north") && canonical === "Democratic People's Republic of Korea") best += 2e4;
+        if ((qNorm === "us" || qNorm === "usa") && canonical === "United States of America") best += 2e4;
+        if (qNorm === "uk" && canonical === "United Kingdom of Great Britain and Northern Ireland") best += 2e4;
+
+        return best;
+      }
+
+      function filterCountriesByQuery(q) {
+        const qn = normCountryQuery(q);
+        const main = !qn
+          ? ALL_COUNTRIES.slice()
+          : ALL_COUNTRIES.map((c) => ({ c, s: countryMatchScore(c, qn) }))
+              .filter((x) => x.s > 0)
+              .sort((a, b) => b.s - a.s || a.c.localeCompare(b.c))
+              .map((x) => x.c);
+        return [COUNTRY_ANONYMOUS, ...main];
+      }
+
+      let countryListActive = -1;
+
+      function renderCountryList(items) {
+        const dd = $("signupCountryDropdown");
+        const qEmpty = !normCountryQuery($("signupCountrySearch").value);
+        const cap = qEmpty ? items.length : 120;
+        const show = items.slice(0, cap);
+        dd.innerHTML = "";
+        show.forEach((c, i) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.setAttribute("role", "option");
+          b.className = "country-option";
+          b.dataset.index = String(i);
+          b.textContent = c;
+          b.addEventListener("mousedown", (e) => e.preventDefault());
+          b.addEventListener("click", () => selectSignupCountry(c));
+          dd.appendChild(b);
+        });
+        if (items.length > cap) {
+          const m = document.createElement("div");
+          m.className = "country-more";
+          m.textContent = `Showing ${cap} of ${items.length} matches. Type more to narrow the list.`;
+          dd.appendChild(m);
+        }
+        countryListActive = show.length ? 0 : -1;
+        highlightCountryOption();
+      }
+
+      function highlightCountryOption() {
+        const opts = Array.from($("signupCountryDropdown").querySelectorAll(".country-option"));
+        opts.forEach((el, i) => {
+          el.classList.toggle("country-option-active", i === countryListActive);
+        });
+      }
+
+      function openCountryDropdown(show) {
+        const dd = $("signupCountryDropdown");
+        const input = $("signupCountrySearch");
+        dd.hidden = !show;
+        input.setAttribute("aria-expanded", show ? "true" : "false");
+      }
+
+      function selectSignupCountry(canonical) {
+        $("signupCountry").value = canonical;
+        $("signupCountrySearch").value = canonical;
+        openCountryDropdown(false);
+      }
+
+      function initCountryPicker() {
+        const input = $("signupCountrySearch");
+        const dd = $("signupCountryDropdown");
+        if (!input || !dd) return;
+
+        const onInput = () => {
+          $("signupCountry").value = "";
+          const list = filterCountriesByQuery(input.value);
+          renderCountryList(list);
+          openCountryDropdown(true);
+        };
+
+        input.addEventListener("input", onInput);
+        input.addEventListener("focus", () => {
+          const list = filterCountriesByQuery(input.value);
+          renderCountryList(list);
+          openCountryDropdown(true);
+        });
+
+        input.addEventListener("keydown", (e) => {
+          const opts = () => Array.from(dd.querySelectorAll(".country-option"));
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            const o = opts();
+            if (!o.length) return;
+            countryListActive = Math.min(countryListActive + 1, o.length - 1);
+            highlightCountryOption();
+            o[countryListActive].scrollIntoView({ block: "nearest" });
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            const o = opts();
+            if (!o.length) return;
+            countryListActive = Math.max(countryListActive - 1, 0);
+            highlightCountryOption();
+            o[countryListActive].scrollIntoView({ block: "nearest" });
+          } else if (e.key === "Enter") {
+            const o = opts();
+            if (dd.hidden || countryListActive < 0 || !o[countryListActive]) return;
+            e.preventDefault();
+            selectSignupCountry(o[countryListActive].textContent || "");
+          } else if (e.key === "Escape") {
+            openCountryDropdown(false);
+          }
+        });
+
+        document.addEventListener("click", (e) => {
+          if (!input.contains(e.target) && !dd.contains(e.target)) openCountryDropdown(false);
+        });
+      }
+
+      function nowISO() {
+        return new Date().toISOString();
+      }
+
+      function normalizeEmail(email) {
+        return String(email || "").trim().toLowerCase();
+      }
+
+      function isPrintableAsciiChar(ch) {
+        const cp = ch.codePointAt(0);
+        return cp >= 32 && cp <= 126;
+      }
+
+      function isNicknameAllowedChar(ch) {
+        const cp = ch.codePointAt(0);
+        return cp >= 33 && cp <= 126;
+      }
+
+      function beforeInputNickname(ev) {
+        if (ev.isComposing) return;
+        const it = ev.inputType || "";
+        if (it.startsWith("delete") || it === "historyUndo" || it === "historyRedo") return;
+        if (it === "insertLineBreak" || it === "insertParagraph") {
+          ev.preventDefault();
+          return;
+        }
+        const d = ev.data;
+        if (d == null || d === "") return;
+        for (const ch of d) {
+          if (!isNicknameAllowedChar(ch)) {
+            ev.preventDefault();
+            return;
+          }
+        }
+      }
+
+      function beforeInputAsciiOnly(ev) {
+        if (ev.isComposing) return;
+        const it = ev.inputType || "";
+        if (it.startsWith("delete") || it === "historyUndo" || it === "historyRedo") return;
+        if (it === "insertLineBreak" || it === "insertParagraph") {
+          ev.preventDefault();
+          return;
+        }
+        const d = ev.data;
+        if (d == null || d === "") return;
+        for (const ch of d) {
+          if (ch.codePointAt(0) > 127) {
+            ev.preventDefault();
+            return;
+          }
+        }
+      }
+
+      function beforeInputPasswordAscii(ev) {
+        if (ev.isComposing) return;
+        const it = ev.inputType || "";
+        if (it.startsWith("delete") || it === "historyUndo" || it === "historyRedo") return;
+        if (it === "insertLineBreak" || it === "insertParagraph") {
+          ev.preventDefault();
+          return;
+        }
+        const d = ev.data;
+        if (d == null || d === "") return;
+        for (const ch of d) {
+          if (!isPrintableAsciiChar(ch)) {
+            ev.preventDefault();
+            return;
+          }
+        }
+      }
+
+      function preventImeComposition(ev) {
+        ev.preventDefault();
+      }
+
+      function pasteNickname(ev) {
+        ev.preventDefault();
+        const raw = (ev.clipboardData || window.clipboardData).getData("text") || "";
+        const letters = [...raw].filter((ch) => isNicknameAllowedChar(ch)).join("");
+        const el = ev.currentTarget;
+        const start = el.selectionStart ?? 0;
+        const end = el.selectionEnd ?? 0;
+        const v = el.value;
+        const merged = (v.slice(0, start) + letters + v.slice(end)).slice(0, 16);
+        el.value = merged;
+        const pos = Math.min(start + letters.length, merged.length);
+        el.setSelectionRange(pos, pos);
+      }
+
+      function pasteAsciiOnly(ev) {
+        ev.preventDefault();
+        const raw = (ev.clipboardData || window.clipboardData).getData("text") || "";
+        const ascii = [...raw].filter((ch) => ch.codePointAt(0) <= 127).join("");
+        const el = ev.currentTarget;
+        const start = el.selectionStart ?? 0;
+        const end = el.selectionEnd ?? 0;
+        const v = el.value;
+        el.value = v.slice(0, start) + ascii + v.slice(end);
+        const pos = start + ascii.length;
+        el.setSelectionRange(pos, pos);
+      }
+
+      function pastePasswordAscii(ev) {
+        ev.preventDefault();
+        const raw = (ev.clipboardData || window.clipboardData).getData("text") || "";
+        const ascii = [...raw].filter((ch) => isPrintableAsciiChar(ch)).join("");
+        const el = ev.currentTarget;
+        const start = el.selectionStart ?? 0;
+        const end = el.selectionEnd ?? 0;
+        const v = el.value;
+        el.value = v.slice(0, start) + ascii + v.slice(end);
+        const pos = start + ascii.length;
+        el.setSelectionRange(pos, pos);
+      }
+
+      function inputSanitizeNickname(ev) {
+        const el = ev.currentTarget;
+        const cleaned = el.value.replace(/[^\x21-\x7E]/g, "").slice(0, 16);
+        if (cleaned !== el.value) {
+          el.value = cleaned;
+          el.setSelectionRange(cleaned.length, cleaned.length);
+        }
+      }
+
+      function inputSanitizeAsciiEmail(ev) {
+        const el = ev.currentTarget;
+        const cleaned = [...el.value].filter((ch) => ch.codePointAt(0) <= 127).join("");
+        if (cleaned !== el.value) el.value = cleaned;
+      }
+
+      function inputSanitizePassword(ev) {
+        const el = ev.currentTarget;
+        const cleaned = [...el.value].filter((ch) => isPrintableAsciiChar(ch)).join("");
+        if (cleaned !== el.value) el.value = cleaned;
+      }
+
+      function installAuthEnglishOnlyInputs() {
+        const nick = $("signupName");
+        if (nick) {
+          nick.addEventListener("beforeinput", beforeInputNickname);
+          nick.addEventListener("compositionstart", preventImeComposition);
+          nick.addEventListener("paste", pasteNickname);
+          nick.addEventListener("input", inputSanitizeNickname);
+        }
+        for (const id of ["signupEmail", "loginEmail"]) {
+          const el = $(id);
+          if (!el) continue;
+          el.addEventListener("beforeinput", beforeInputAsciiOnly);
+          el.addEventListener("compositionstart", preventImeComposition);
+          el.addEventListener("paste", pasteAsciiOnly);
+          el.addEventListener("input", inputSanitizeAsciiEmail);
+        }
+        for (const id of ["signupPassword", "signupPassword2", "loginPassword"]) {
+          const el = $(id);
+          if (!el) continue;
+          el.addEventListener("beforeinput", beforeInputPasswordAscii);
+          el.addEventListener("compositionstart", preventImeComposition);
+          el.addEventListener("paste", pastePasswordAscii);
+          el.addEventListener("input", inputSanitizePassword);
+        }
+      }
+
+      async function sha256Hex(text) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(text);
+        const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+        const bytes = Array.from(new Uint8Array(hashBuffer));
+        return bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
+      }
+
+      function loadUsers() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEYS.USERS);
+          return raw ? JSON.parse(raw) : {};
+        } catch {
+          return {};
+        }
+      }
+
+      function saveUsers(users) {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+      }
+
+      function loadSession() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEYS.SESSION);
+          return raw ? JSON.parse(raw) : null;
+        } catch {
+          return null;
+        }
+      }
+
+      function saveSession(session) {
+        localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
+      }
+
+      function clearSession() {
+        localStorage.removeItem(STORAGE_KEYS.SESSION);
+      }
+
+      function loadSleepStore() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEYS.SLEEP);
+          return raw ? JSON.parse(raw) : {};
+        } catch {
+          return {};
+        }
+      }
+
+      function saveSleepStore(store) {
+        localStorage.setItem(STORAGE_KEYS.SLEEP, JSON.stringify(store));
+      }
+
+      function getCurrentSessionOrNull() {
+        let session = loadSession();
+        if (!session || !session.email) return null;
+        if (!session.country) {
+          const users = loadUsers();
+          const u = users[session.email];
+          if (u && u.country) {
+            session = { ...session, country: u.country };
+            saveSession(session);
+          }
+        }
+        return session;
+      }
+
+      const BUTTON_LABELS = {
+        bedtime: "Start Bedtime",
+        wakeup: "Are U Awoke?",
+      };
+      let clickProgress = { bedtime: 2, wakeup: 0 };
+
+      function setButtonCounter(kind, remaining, shouldBlink) {
+        const buttonId = kind === "bedtime" ? "bedtimeBtn" : "wakeupBtn";
+        const baseLabel = BUTTON_LABELS[kind];
+        const blinkClass = shouldBlink ? "click-count blink" : "click-count";
+        $(buttonId).innerHTML = `${baseLabel} <span class="${blinkClass}">(${remaining}/2)</span>`;
+      }
+
+      function applyButtonCounterState() {
+        setButtonCounter("bedtime", clickProgress.bedtime, clickProgress.bedtime > 0 && clickProgress.bedtime < 2);
+        setButtonCounter("wakeup", clickProgress.wakeup, clickProgress.wakeup > 0 && clickProgress.wakeup < 2);
+      }
+
+      let toastTimer = null;
+      function toast(kind, message) {
+        const el = $("toast");
+        const msg = $("toastMsg");
+        el.dataset.kind = kind;
+        msg.textContent = message;
+        el.setAttribute("aria-hidden", "false");
+        if (toastTimer) window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => {
+          el.setAttribute("aria-hidden", "true");
+        }, 2600);
+      }
+
+      function setActiveTab(which) {
+        const isLogin = which === "login";
+        $("panel-login").setAttribute("aria-hidden", String(!isLogin));
+        $("panel-signup").setAttribute("aria-hidden", String(isLogin));
+        document.title = isLogin ? "Sleep Challenge | Login" : "Sleep Challenge | Signup";
+      }
+
+      function showAuthLandingMode() {
+        const page = $("authPage");
+        const card = $("authCard");
+        if (!page || !card) return;
+        page.classList.add("auth-landing");
+        card.hidden = true;
+        card.setAttribute("inert", "");
+      }
+
+      function showAuthFormMode() {
+        const page = $("authPage");
+        const card = $("authCard");
+        if (!page || !card) return;
+        page.classList.remove("auth-landing");
+        card.hidden = false;
+        card.removeAttribute("inert");
+      }
+
+      function showPage(pageName) {
+        $("authPage").hidden = pageName !== "auth";
+        $("trackerPage").hidden = pageName !== "tracker";
+        $("aiProgressPage").hidden = pageName !== "progress";
+        $("aiFeedbackPage").hidden = pageName !== "feedback";
+        $("sleepScorePage").hidden = pageName !== "score";
+        if (pageName === "auth") showAuthLandingMode();
+      }
+
+      function renderSessionChips(session) {
+        const fill = (el, emptyLabel) => {
+          el.replaceChildren();
+          if (!session || !session.email) {
+            el.appendChild(document.createTextNode(emptyLabel));
+            return;
+          }
+          el.appendChild(document.createTextNode("Session: "));
+          el.appendChild(document.createTextNode(session.name));
+          const countryRaw = String(session.country || "").trim();
+          const { alpha2, displayName } = resolveCountryForFlag(countryRaw);
+          const flag = alpha2 ? alpha2ToFlagEmoji(alpha2) : "";
+          if (flag) {
+            el.appendChild(document.createTextNode("   "));
+            const wrap = document.createElement("span");
+            wrap.className = "country-flag-wrap";
+            const flagBtn = document.createElement("button");
+            flagBtn.type = "button";
+            flagBtn.className = "country-flag-btn";
+            flagBtn.setAttribute("aria-expanded", "false");
+            flagBtn.setAttribute("aria-label", `${displayName}. Tap the flag to show or hide the name below.`);
+            const label = document.createElement("span");
+            label.className = "country-flag-label";
+            label.id = `countryFlagLabel-${el.id}`;
+            label.textContent = displayName;
+            label.hidden = true;
+            flagBtn.setAttribute("aria-controls", label.id);
+            flagBtn.textContent = flag;
+            flagBtn.addEventListener("click", (ev) => {
+              ev.preventDefault();
+              ev.stopPropagation();
+              const wasOpen = !label.hidden;
+              document.querySelectorAll(".country-flag-label").forEach((n) => {
+                n.hidden = true;
+              });
+              document.querySelectorAll(".country-flag-btn").forEach((b) => {
+                b.setAttribute("aria-expanded", "false");
+              });
+              if (!wasOpen) {
+                label.hidden = false;
+                flagBtn.setAttribute("aria-expanded", "true");
+              }
+            });
+            wrap.append(flagBtn, label);
+            el.appendChild(wrap);
+          }
+          el.appendChild(document.createTextNode(` (${session.email})`));
+        };
+        const authChip = $("sessionChip");
+        if (authChip) fill(authChip, "Session: Logged out");
+        fill($("trackerSessionChip"), "Session: -");
+      }
+
+      function refreshSessionUI(preferredPageForLoggedIn = "tracker") {
+        const session = getCurrentSessionOrNull();
+        if (session && session.email) {
+          renderSessionChips(session);
+          showPage(preferredPageForLoggedIn);
+        } else {
+          renderSessionChips(null);
+          showPage("auth");
+        }
+      }
+
+      function validateAge(value) {
+        if (value === "" || value === null || value === undefined) return { ok: true, value: null };
+        const n = Number(value);
+        if (!Number.isFinite(n)) return { ok: false, message: "Please enter age as a number." };
+        if (n < 13 || n > 40) return { ok: false, message: "Age must be between 13 and 40." };
+        return { ok: true, value: n };
+      }
+
+      /** Width ratio: 8pm–2am bedtime emphasis (3:1), 5am–11:59am wakeup (1:3), else even (1:1). */
+      function getPriorityWindow(now = new Date()) {
+        const hour = now.getHours();
+        if (hour >= 20 || hour < 3) return "bedtime";
+        if (hour >= 5 && hour < 12) return "wakeup";
+        return "neutral";
+      }
+
+      /** Applies time-based grid columns on `.sleep-controls` plus priority/deemphasis on buttons. */
+      function setButtonPriorityStyles() {
+        const mode = getPriorityWindow();
+        const controls = $("sleepSection").querySelector(".sleep-controls");
+        const bedtimeBtn = $("bedtimeBtn");
+        const wakeupBtn = $("wakeupBtn");
+
+        controls.classList.remove("bedtime-priority", "wakeup-priority");
+        bedtimeBtn.classList.remove("priority", "deemphasis");
+        wakeupBtn.classList.remove("priority", "deemphasis");
+
+        if (mode === "bedtime") {
+          controls.classList.add("bedtime-priority");
+          bedtimeBtn.classList.add("priority");
+          wakeupBtn.classList.add("deemphasis");
+          return;
+        }
+        if (mode === "wakeup") {
+          controls.classList.add("wakeup-priority");
+          wakeupBtn.classList.add("priority");
+          bedtimeBtn.classList.add("deemphasis");
+          return;
+        }
+      }
+
+      function updateActionAvailability() {
+        const session = getCurrentSessionOrNull();
+        const bedtimeBtn = $("bedtimeBtn");
+        const wakeupBtn = $("wakeupBtn");
+        if (!session) {
+          bedtimeBtn.disabled = true;
+          wakeupBtn.disabled = true;
+          clickProgress = { bedtime: 2, wakeup: 0 };
+          applyButtonCounterState();
+          syncMinus20CheckboxState();
+          return;
+        }
+
+        const { bucket } = getSleepBucket(session.email);
+        const isSleeping = Boolean(bucket.activeStartAt);
+
+        if (isSleeping) {
+          bedtimeBtn.disabled = true;
+          wakeupBtn.disabled = false;
+          if (clickProgress.bedtime !== 0) clickProgress.bedtime = 0;
+          if (clickProgress.wakeup === 0) clickProgress.wakeup = 2;
+        } else {
+          bedtimeBtn.disabled = false;
+          wakeupBtn.disabled = true;
+          if (clickProgress.bedtime === 0) clickProgress.bedtime = 2;
+          clickProgress.wakeup = 0;
+        }
+        applyButtonCounterState();
+        syncMinus20CheckboxState();
+      }
+
+      function getSleepBucket(email) {
+        const store = loadSleepStore();
+        const bucket = store[email] || { activeStartAt: null, history: [] };
+        return { store, bucket };
+      }
+
+      function getCollectedDaysCount(email) {
+        const { bucket } = getSleepBucket(email);
+        return Math.min(7, bucket.history.length);
+      }
+
+      function getWeeklyProgress(email) {
+        const { bucket } = getSleepBucket(email);
+        const total = bucket.history.length;
+        const remainder = total % 7;
+        return {
+          total,
+          cycleCount: remainder === 0 ? 7 : remainder,
+          canGetWeeklyFeedback: total > 0 && remainder === 0,
+        };
+      }
+
+      function hoursDiffText(ms) {
+        return (Math.abs(ms) / (1000 * 60 * 60)).toFixed(1);
+      }
+
+      function renderDailyFeedback() {
+        const session = getCurrentSessionOrNull();
+        if (!session) return;
+        const { bucket } = getSleepBucket(session.email);
+        const list = bucket.history;
+        const sleepEl = $("dailySleepTime");
+        const compareEl = $("dailyCompareText");
+
+        if (!list.length) {
+          sleepEl.textContent = "Your sleep time: (00:00:00)";
+          compareEl.textContent = "Log one more day to compare with yesterday.";
+          return;
+        }
+
+        const latest = list[list.length - 1];
+        sleepEl.textContent = `Your sleep time: (${latest.durationText})`;
+
+        if (list.length < 2) {
+          compareEl.textContent = "Log one more day to compare with yesterday.";
+          return;
+        }
+
+        const prev = list[list.length - 2];
+        const diff = latest.durationMs - prev.durationMs;
+        const n = hoursDiffText(diff);
+        if (diff > 0) {
+          compareEl.textContent = `You slept ${n} hours more than yesterday!`;
+        } else if (diff < 0) {
+          compareEl.textContent = `You slept ${n} hours less than yesterday...`;
+        } else {
+          compareEl.textContent = "You slept the same amount as yesterday.";
+        }
+      }
+
+      function renderAiProgressPage() {
+        const session = getCurrentSessionOrNull();
+        if (!session) return;
+        const weekly = getWeeklyProgress(session.email);
+        const progressTitle = $("progressTitle");
+        const nextFeedbackBtn = $("nextFeedbackBtn");
+        if (weekly.canGetWeeklyFeedback) {
+          progressTitle.textContent = "Get AI feedback?";
+          nextFeedbackBtn.hidden = false;
+          renderDailyFeedback();
+          return;
+        }
+        nextFeedbackBtn.hidden = true;
+        progressTitle.innerHTML = `Until AI feedbacks: <span class="progress-count" id="progressCount">(${weekly.cycleCount}/7)</span>`;
+        renderDailyFeedback();
+      }
+
+      function formatDuration(ms) {
+        const sec = Math.max(0, Math.floor(ms / 1000));
+        const h = String(Math.floor(sec / 3600)).padStart(2, "0");
+        const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
+        const s = String(sec % 60).padStart(2, "0");
+        return `${h}:${m}:${s}`;
+      }
+
+      /** Optional “minus 20 minutes” correction (checkbox on tracker). */
+      const MINUS20_MS = 20 * 60 * 1000;
+
+      function computeFinalSleepDurationMs(rawMs, minus20Checked) {
+        const raw = Math.max(0, Number(rawMs) || 0);
+        if (!minus20Checked) return raw;
+        if (raw <= MINUS20_MS) return 0;
+        return raw - MINUS20_MS;
+      }
+
+      function syncMinus20CheckboxState() {
+        const cb = $("minus20Correction");
+        const label = cb ? cb.closest(".sleep-minus20-label") : null;
+        if (!cb) return;
+        const session = getCurrentSessionOrNull();
+        let locked = true;
+        if (session && session.email) {
+          const { bucket } = getSleepBucket(session.email);
+          locked = Boolean(bucket.activeStartAt);
+        }
+        cb.disabled = locked;
+        if (label) label.classList.toggle("sleep-minus20-label-locked", locked);
+      }
+
+      function renderSleepMeta() {
+        const timerEl = $("activeTimer");
+        const metaEl = $("sleepMeta");
+        const session = getCurrentSessionOrNull();
+        if (!session) {
+          timerEl.textContent = "00:00:00";
+          metaEl.textContent = "Log in to use sleep data collection features.";
+          syncMinus20CheckboxState();
+          return;
+        }
+
+        const { bucket } = getSleepBucket(session.email);
+        const active = bucket.activeStartAt ? new Date(bucket.activeStartAt) : null;
+
+        if (active) {
+          const elapsedMs = Date.now() - active.getTime();
+          timerEl.textContent = formatDuration(elapsedMs);
+          metaEl.textContent = `Bedtime started: ${active.toLocaleString()} | Tracking continues until you press wakeup.`;
+        } else {
+          timerEl.textContent = "00:00:00";
+          const recent = bucket.history[bucket.history.length - 1];
+          if (recent) {
+            metaEl.textContent = `Recent sleep: ${recent.durationText} (recorded at ${new Date(recent.wokeAt).toLocaleString()})`;
+          } else {
+            metaEl.textContent = "No records yet. Press Start Bedtime to create your first record.";
+          }
+        }
+        updateActionAvailability();
+      }
+
+      function startBedtime() {
+        const session = getCurrentSessionOrNull();
+        if (!session) return toast("danger", "Please log in first.");
+
+        const { store, bucket } = getSleepBucket(session.email);
+        if (bucket.activeStartAt) return toast("danger", "Bedtime tracking is already active. Press wakeup to end it.");
+
+        bucket.activeStartAt = nowISO();
+        store[session.email] = bucket;
+        saveSleepStore(store);
+        renderSleepMeta();
+        toast("ok", "Bedtime tracking started. It will continue even if you close the app.");
+      }
+
+      function recordWakeup() {
+        const session = getCurrentSessionOrNull();
+        if (!session) return toast("danger", "Please log in first.");
+
+        const { store, bucket } = getSleepBucket(session.email);
+        if (!bucket.activeStartAt) return toast("danger", "Press Start Bedtime first.");
+
+        const start = new Date(bucket.activeStartAt);
+        const end = new Date();
+        const rawDurationMs = end.getTime() - start.getTime();
+        const minus20Checked = Boolean($("minus20Correction") && $("minus20Correction").checked);
+        const durationMs = computeFinalSleepDurationMs(rawDurationMs, minus20Checked);
+        const durationText = formatDuration(durationMs);
+
+        bucket.history.push({
+          bedAt: start.toISOString(),
+          wokeAt: end.toISOString(),
+          durationMs,
+          durationText,
+        });
+        bucket.activeStartAt = null;
+        store[session.email] = bucket;
+        saveSleepStore(store);
+        renderSleepMeta();
+        toast("ok", `Wakeup recorded! Total sleep time: ${durationText}`);
+        renderAiProgressPage();
+        showPage("progress");
+      }
+
+      function handleTwoStepClick(kind, actionFn) {
+        const opposite = kind === "bedtime" ? "wakeup" : "bedtime";
+        const btnId = kind === "bedtime" ? "bedtimeBtn" : "wakeupBtn";
+        if ($(btnId).disabled) return;
+
+        if (clickProgress[kind] === 2) {
+          clickProgress[kind] = 1;
+          if (clickProgress[opposite] === 1) clickProgress[opposite] = 2;
+          applyButtonCounterState();
+          return;
+        }
+        if (clickProgress[kind] === 1) {
+          clickProgress[kind] = 0;
+          applyButtonCounterState();
+          actionFn();
+        }
+      }
+
+      $("goSignupBtn").addEventListener("click", () => {
+        setActiveTab("signup");
+      });
+      $("heroGoLoginBtn").addEventListener("click", () => {
+        showAuthFormMode();
+        setActiveTab("login");
+      });
+      $("heroGoSignupBtn").addEventListener("click", () => {
+        showAuthFormMode();
+        setActiveTab("signup");
+      });
+      // Logout
+      $("trackerLogoutBtn").addEventListener("click", () => {
+        clearSession();
+        refreshSessionUI("auth");
+        renderSleepMeta();
+        clickProgress = { bedtime: 2, wakeup: 0 };
+        applyButtonCounterState();
+        toast("ok", "Logged out successfully.");
+        setActiveTab("login");
+      });
+
+      $("returnSleepBtn").addEventListener("click", () => {
+        const session = getCurrentSessionOrNull();
+        if (!session) {
+          showPage("auth");
+          return;
+        }
+        showPage("tracker");
+        setButtonPriorityStyles();
+        renderSleepMeta();
+      });
+
+      const AI_FEEDBACK_URL = "/api/ai-feedback";
+
+      function resetAiFeedbackPage() {
+        $("aiFeedbackLoading").hidden = false;
+        $("aiFeedbackError").hidden = true;
+        $("aiFeedbackError").textContent = "";
+        $("aiFeedbackResult").hidden = true;
+        $("aiFeedbackBody").replaceChildren();
+        $("aiFeedbackMeta").textContent = "";
+        $("aiFeedbackRetryBtn").hidden = true;
+      }
+
+      function renderAiFeedbackParagraphs(text) {
+        const body = $("aiFeedbackBody");
+        body.replaceChildren();
+        const chunks = String(text || "")
+          .trim()
+          .split(/\n\n+/);
+        const parts = chunks.length ? chunks : [String(text || "").trim()];
+        for (const part of parts) {
+          if (!part.trim()) continue;
+          const p = document.createElement("p");
+          p.className = "ai-feedback-para";
+          p.textContent = part.trim();
+          body.appendChild(p);
+        }
+      }
+
+      async function fetchAiFeedbackFromServer() {
+        const session = getCurrentSessionOrNull();
+        if (!session) {
+          showPage("auth");
+          return;
+        }
+        const users = loadUsers();
+        const user = users[session.email] || {};
+        const { bucket } = getSleepBucket(session.email);
+        const history = bucket.history.slice(-7);
+        const payload = {
+          name: session.name,
+          email: session.email,
+          country: session.country || user.country || "",
+          age: user.age ?? null,
+          history,
+        };
+
+        resetAiFeedbackPage();
+        $("aiFeedbackRetryBtn").hidden = true;
+
+        try {
+          const res = await fetch(AI_FEEDBACK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.ok) {
+            throw new Error(data.error || res.statusText || "Request failed");
+          }
+          $("aiFeedbackLoading").hidden = true;
+          $("aiFeedbackResult").hidden = false;
+          renderAiFeedbackParagraphs(data.text || "");
+          const src = data.source === "openai" ? "OpenAI" : "On-device heuristic on server";
+          $("aiFeedbackMeta").textContent = `Source: ${src}`;
+        } catch (err) {
+          $("aiFeedbackLoading").hidden = true;
+          $("aiFeedbackError").hidden = false;
+          $("aiFeedbackError").textContent =
+            `Could not load AI feedback (${err && err.message ? err.message : "network error"}). ` +
+            `Run the app with Flask: open a terminal in this folder and run: python sleep_app.py — then visit http://127.0.0.1:5000/`;
+          $("aiFeedbackRetryBtn").hidden = false;
+        }
+      }
+
+      function goTrackerFromFeedback() {
+        const session = getCurrentSessionOrNull();
+        if (!session) {
+          showPage("auth");
+          return;
+        }
+        showPage("tracker");
+        setButtonPriorityStyles();
+        renderSleepMeta();
+      }
+
+      $("nextFeedbackBtn").addEventListener("click", () => {
+        const session = getCurrentSessionOrNull();
+        if (!session) {
+          showPage("auth");
+          return;
+        }
+        showPage("feedback");
+        fetchAiFeedbackFromServer();
+      });
+
+      /** Local bedtime as "sleep-day hours": same calendar day afternoon/evening 12–24; after-midnight 0–12 → +24 (e.g. 1am → 25). */
+      function bedAtToSleepHours(iso) {
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return null;
+        let h = d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
+        if (h < 12) h += 24;
+        return h;
+      }
+
+      /** Recommended bedtime (local clock, same scale as bedAtToSleepHours) by age; optional age defaults to 16. */
+      function recommendedBedtimeSleepHours(age) {
+        const a = age == null || !Number.isFinite(Number(age)) ? 16 : Math.min(40, Math.max(13, Number(age)));
+        if (a <= 15) return 21.5;
+        if (a <= 18) return 22;
+        if (a <= 22) return 22.5;
+        return 23;
+      }
+
+      function formatSleepHourLabel(sleepH) {
+        if (sleepH == null || !Number.isFinite(sleepH)) return "—";
+        const h24 = sleepH >= 24 ? sleepH - 24 : sleepH;
+        const hh = Math.floor(h24);
+        const mm = Math.round((h24 - hh) * 60);
+        const d = new Date();
+        d.setHours(hh, mm, 0, 0);
+        return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+      }
+
+      /** Hours between actual and recommended bedtime (same night scale). */
+      function sleepScoreFromBedtimeDiffHours(diff) {
+        const d = Math.max(0, diff);
+        let s;
+        if (d < 1) s = 100 - 10 * d;
+        else if (d < 2) s = 89 - 19 * (d - 1);
+        else if (d < 4) s = 69 - (19 / 2) * (d - 2);
+        else if (d < 6) s = 49 - (19 / 2) * (d - 4);
+        else s = Math.max(1, 29 - 7 * (d - 6));
+        return Math.round(Math.min(100, Math.max(1, s)));
+      }
+
+      function levelFromSleepScore(score) {
+        if (score >= 90) return 5;
+        if (score >= 70) return 4;
+        if (score >= 50) return 3;
+        if (score >= 30) return 2;
+        return 1;
+      }
+
+      /** Same age bands as `recommended_sleep_range_hours` in sleep_app.py */
+      function recommendedSleepRangeHoursClient(age) {
+        if (age == null || !Number.isFinite(Number(age))) return [8.0, 10.0];
+        const a = Math.floor(Number(age));
+        if (a < 6) return [9.0, 12.0];
+        if (a <= 12) return [9.0, 12.0];
+        if (a <= 17) return [8.0, 10.0];
+        return [7.0, 9.0];
+      }
+
+      /** 0–100 from last night’s sleep hours vs recommended range (uses stored duration = final). */
+      function durationHoursScore(hours, lo, hi) {
+        const eps = 1.0 / 3600.0;
+        if (hours <= eps) return 15;
+        if (hours < lo) return Math.round(25 + (hours / lo) * 75);
+        if (hours > hi) return Math.max(45, Math.round(100 - Math.min(50, (hours - hi) * 8)));
+        return 100;
+      }
+
+      function getSleepLevelImageUrls() {
+        const el = $("sleepLevelImageUrlsJson");
+        if (!el || !el.textContent) return {};
+        try {
+          const data = JSON.parse(el.textContent.trim());
+          return data && typeof data === "object" ? data : {};
+        } catch {
+          return {};
+        }
+      }
+
+      function setSleepLevelImage(levelOrNull) {
+        const img = $("sleepLevelImage");
+        if (!img) return;
+        const urls = getSleepLevelImageUrls();
+        const n = Math.trunc(Number(levelOrNull));
+        const key = Number.isFinite(n) ? String(n) : "";
+        const url = urls[key];
+        const hide = () => {
+          img.classList.add("sleep-score-level-img--hidden");
+          img.removeAttribute("src");
+          img.alt = "";
+        };
+        const show = () => {
+          img.classList.remove("sleep-score-level-img--hidden");
+        };
+        if (!url || !Number.isFinite(n) || n < 1 || n > 5) {
+          hide();
+          return;
+        }
+        img.alt = `Sleep level ${n} illustration`;
+        img.onerror = hide;
+        img.onload = show;
+        if (img.getAttribute("src") === url) {
+          if (img.complete && img.naturalWidth > 0) show();
+          else if (img.complete && img.naturalWidth === 0) hide();
+          else show();
+          return;
+        }
+        hide();
+        img.src = url;
+        if (img.complete && img.naturalWidth > 0) show();
+        window.setTimeout(() => {
+          if (img.getAttribute("src") === url && img.naturalWidth > 0) show();
+        }, 0);
+      }
+
+      function renderSleepScorePage() {
+        const session = getCurrentSessionOrNull();
+        const valEl = $("sleepScoreValue");
+        const lvlEl = $("sleepScoreLevel");
+        const detEl = $("sleepScoreDetail");
+        if (!session) {
+          valEl.textContent = "—";
+          lvlEl.textContent = "Lv.—";
+          detEl.textContent = "Log in to see your sleep score.";
+          detEl.classList.add("sleep-score-empty");
+          setSleepLevelImage(null);
+          return;
+        }
+        const users = loadUsers();
+        const user = users[session.email] || {};
+        const age = user.age;
+        const { bucket } = getSleepBucket(session.email);
+        const list = bucket.history || [];
+        const latest = list.length ? list[list.length - 1] : null;
+        if (!latest || !latest.bedAt) {
+          valEl.textContent = "—";
+          lvlEl.textContent = "Lv.—";
+          detEl.textContent = "Record at least one sleep session (bedtime → wakeup) to get a score.";
+          detEl.classList.add("sleep-score-empty");
+          setSleepLevelImage(null);
+          return;
+        }
+        detEl.classList.remove("sleep-score-empty");
+        const actualH = bedAtToSleepHours(latest.bedAt);
+        const recH = recommendedBedtimeSleepHours(age);
+        if (actualH == null) {
+          valEl.textContent = "—";
+          lvlEl.textContent = "Lv.—";
+          detEl.textContent = "Could not read your last bedtime.";
+          detEl.classList.add("sleep-score-empty");
+          setSleepLevelImage(null);
+          return;
+        }
+        const diffH = Math.abs(actualH - recH);
+        const bedtimeScore = sleepScoreFromBedtimeDiffHours(diffH);
+        const hoursSlept = Math.max(0, (Number(latest.durationMs) || 0) / (1000 * 60 * 60));
+        const [durLo, durHi] = recommendedSleepRangeHoursClient(age);
+        const durationScore = durationHoursScore(hoursSlept, durLo, durHi);
+        const score = Math.round((bedtimeScore + durationScore) / 2);
+        const lv = levelFromSleepScore(score);
+        valEl.textContent = String(score);
+        lvlEl.textContent = `Lv.${lv}`;
+        setSleepLevelImage(lv);
+        const ageNote =
+          age == null || !Number.isFinite(Number(age))
+            ? "Age not set — using the 16-year baseline for recommended bedtime."
+            : "";
+        detEl.textContent =
+          `Score blends bedtime (vs ${formatSleepHourLabel(recH)}) and last night’s sleep length (~${hoursSlept.toFixed(1)} h vs about ${durLo.toFixed(0)}–${durHi.toFixed(0)} h for your age). ` +
+          `Bedtime difference about ${diffH.toFixed(1)} hours.${ageNote ? " " + ageNote : ""}`;
+      }
+
+      $("feedbackScoreNavBtn").addEventListener("click", () => {
+        const session = getCurrentSessionOrNull();
+        if (!session) {
+          showPage("auth");
+          return;
+        }
+        renderSleepScorePage();
+        showPage("score");
+      });
+
+      $("scoreBackToFeedbackBtn").addEventListener("click", () => {
+        const session = getCurrentSessionOrNull();
+        if (!session) {
+          showPage("auth");
+          return;
+        }
+        showPage("feedback");
+      });
+
+      $("scoreReturnSleepBtn").addEventListener("click", () => {
+        goTrackerFromFeedback();
+      });
+
+      $("feedbackHomeBtn").addEventListener("click", () => {
+        goTrackerFromFeedback();
+      });
+
+      $("feedbackReturnSleepBtn").addEventListener("click", () => {
+        goTrackerFromFeedback();
+      });
+
+      $("aiFeedbackRetryBtn").addEventListener("click", () => {
+        fetchAiFeedbackFromServer();
+      });
+
+      // Login
+      $("loginForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = normalizeEmail($("loginEmail").value);
+        const password = $("loginPassword").value;
+        if (!email) return toast("danger", "Please enter your email.");
+        if (!password || password.length < 8) return toast("danger", "Password must be at least 8 characters.");
+
+        const users = loadUsers();
+        const user = users[email];
+        if (!user) return toast("danger", "Account not found. Please sign up first.");
+
+        const passwordHash = await sha256Hex(password);
+        if (passwordHash !== user.passwordHash) return toast("danger", "Incorrect password.");
+
+        saveSession({ email, name: user.name, country: user.country || "", loggedInAt: nowISO() });
+        refreshSessionUI("tracker");
+        setButtonPriorityStyles();
+        renderSleepMeta();
+        toast("ok", `${user.name}, welcome!`);
+      });
+
+      // Signup
+      $("signupForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = String($("signupName").value || "").trim();
+        const ageRaw = $("signupAge").value;
+        const email = normalizeEmail($("signupEmail").value);
+        const password = $("signupPassword").value;
+        const password2 = $("signupPassword2").value;
+        const country = String($("signupCountry").value || "")
+          .trim()
+          .replace(/[\u200B-\u200D\uFEFF]/g, "");
+
+        if (!/^[\x21-\x7E]{2,16}$/.test(name)) {
+          return toast(
+            "danger",
+            "Nickname must be 2–16 characters: letters, numbers, or symbols (ASCII only, no spaces; Korean not allowed)."
+          );
+        }
+        if (!email) return toast("danger", "Please enter your email.");
+        if (!password || password.length < 8) return toast("danger", "Password must be at least 8 characters.");
+        if (password !== password2) return toast("danger", "Password confirmation does not match.");
+        if (!country) {
+          return toast("danger", "Country is required. Pick ANONYMOUS (top of list) to hide your flag, or choose a country.");
+        }
+        const isAnon = normCountryQuery(country) === normCountryQuery(COUNTRY_ANONYMOUS);
+        const resolvedCountry = resolveCountryForFlag(country);
+        if (!isAnon && !resolvedCountry.alpha2) {
+          return toast("danger", "Pick a country from the list or ANONYMOUS. Unknown values are not allowed.");
+        }
+
+        const age = validateAge(ageRaw);
+        if (!age.ok) return toast("danger", age.message);
+
+        const users = loadUsers();
+        if (users[email]) return toast("danger", "This email is already registered. Please log in.");
+
+        const passwordHash = await sha256Hex(password);
+        const countryToSave = isAnon ? COUNTRY_ANONYMOUS : resolvedCountry.displayName;
+        users[email] = {
+          name,
+          age: age.value,
+          country: countryToSave,
+          passwordHash,
+          createdAt: nowISO(),
+        };
+        saveUsers(users);
+
+        saveSession({ email, name, country: countryToSave || "", loggedInAt: nowISO() });
+        refreshSessionUI("tracker");
+        setButtonPriorityStyles();
+        renderSleepMeta();
+        toast("ok", `${name}, welcome!`);
+      });
+
+      $("bedtimeBtn").addEventListener("click", () => handleTwoStepClick("bedtime", startBedtime));
+      $("wakeupBtn").addEventListener("click", () => handleTwoStepClick("wakeup", recordWakeup));
+
+      document.addEventListener(
+        "click",
+        (e) => {
+          if (e.target.closest(".country-flag-wrap")) return;
+          document.querySelectorAll(".country-flag-label").forEach((n) => {
+            n.hidden = true;
+          });
+          document.querySelectorAll(".country-flag-btn").forEach((b) => {
+            b.setAttribute("aria-expanded", "false");
+          });
+        },
+        true
+      );
+
+      // Init: always start from login page on fresh app launch.
+      initCountryPicker();
+      installAuthEnglishOnlyInputs();
+      clearSession();
+      refreshSessionUI("auth");
+      setButtonPriorityStyles();
+      renderSleepMeta();
+      window.setInterval(() => {
+        setButtonPriorityStyles();
+        renderSleepMeta();
+      }, 1000);
+
+      const bootSession = getCurrentSessionOrNull();
+      if (bootSession && bootSession.email) {
+        toast("ok", `${bootSession.name}, you are already logged in.`);
+      }
+    </script>
+  </body>
+</html>
