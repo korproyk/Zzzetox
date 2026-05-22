@@ -2920,6 +2920,100 @@
         localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
       }
 
+      function cacheUserProfile(email, profile, passwordHash) {
+        const users = loadUsers();
+        users[email] = {
+          name: profile.name,
+          age: profile.age ?? null,
+          country: profile.country || "",
+          passwordHash,
+          createdAt: profile.createdAt || nowISO(),
+        };
+        saveUsers(users);
+      }
+
+      async function apiAuthFetch(path, options = {}) {
+        const session = loadSession();
+        const headers = {
+          "Content-Type": "application/json",
+          ...(options.headers || {}),
+        };
+        if (session && session.authToken) {
+          headers.Authorization = `Bearer ${session.authToken}`;
+        }
+        const res = await fetch(path, { ...options, headers });
+        const data = await res.json().catch(() => ({}));
+        return { res, data };
+      }
+
+      function mergeServerSleepBucket(email, serverBucket) {
+        if (!serverBucket || typeof serverBucket !== "object") return;
+        const store = loadSleepStore();
+        const local = store[email] || { activeStartAt: null, history: [], sleepGoalHours: null };
+        const serverHist = Array.isArray(serverBucket.history) ? serverBucket.history : [];
+        const localHist = Array.isArray(local.history) ? local.history : [];
+        const merged = {
+          activeStartAt: serverBucket.activeStartAt ?? local.activeStartAt ?? null,
+          sleepGoalHours:
+            serverBucket.sleepGoalHours != null ? serverBucket.sleepGoalHours : local.sleepGoalHours ?? null,
+          history: serverHist.length >= localHist.length ? serverHist : localHist,
+        };
+        store[email] = merged;
+        saveSleepStore(store, { skipServerPush: true });
+      }
+
+      let sleepServerPushTimer = null;
+
+      function scheduleSleepServerPush() {
+        const session = getCurrentSessionOrNull();
+        if (!session || !session.authToken || isGuestSession(session)) return;
+        if (sleepServerPushTimer) window.clearTimeout(sleepServerPushTimer);
+        sleepServerPushTimer = window.setTimeout(() => {
+          sleepServerPushTimer = null;
+          pushSleepBucketToServer(session.email);
+        }, 500);
+      }
+
+      async function pushSleepBucketToServer(email) {
+        const session = getCurrentSessionOrNull();
+        if (!session || !session.authToken || session.email !== email) return;
+        const { bucket } = getSleepBucket(email);
+        try {
+          await apiAuthFetch("/api/account/sleep", {
+            method: "PUT",
+            body: JSON.stringify({ sleepBucket: bucket }),
+          });
+        } catch {
+          /* offline — local data kept */
+        }
+      }
+
+      async function pullSleepBucketFromServer() {
+        const session = getCurrentSessionOrNull();
+        if (!session || !session.authToken || isGuestSession(session)) return;
+        try {
+          const { res, data } = await apiAuthFetch("/api/account/sleep");
+          if (res.ok && data.ok && data.sleepBucket) {
+            mergeServerSleepBucket(session.email, data.sleepBucket);
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+
+      function applyServerAuthSuccess(user, token, passwordHash, sleepBucket) {
+        saveSession({
+          email: user.email,
+          name: user.name,
+          country: user.country || "",
+          age: user.age ?? null,
+          authToken: token,
+          loggedInAt: nowISO(),
+        });
+        cacheUserProfile(user.email, user, passwordHash);
+        if (sleepBucket) mergeServerSleepBucket(user.email, sleepBucket);
+      }
+
       function loadSession() {
         try {
           const raw = localStorage.getItem(STORAGE_KEYS.SESSION);
@@ -2946,8 +3040,9 @@
         }
       }
 
-      function saveSleepStore(store) {
+      function saveSleepStore(store, options = {}) {
         localStorage.setItem(STORAGE_KEYS.SLEEP, JSON.stringify(store));
+        if (!options.skipServerPush) scheduleSleepServerPush();
       }
 
       function isGuestSession(session) {
@@ -2958,11 +3053,16 @@
         let session = loadSession();
         if (!session || !session.email) return null;
         if (isGuestSession(session)) return session;
-        if (!session.country) {
+        if (session.authToken) return session;
+        if (!session.country || session.age == null) {
           const users = loadUsers();
           const u = users[session.email];
-          if (u && u.country) {
-            session = { ...session, country: u.country };
+          if (u) {
+            session = {
+              ...session,
+              country: session.country || u.country || "",
+              age: session.age != null ? session.age : u.age ?? null,
+            };
             saveSession(session);
           }
         }
@@ -3239,7 +3339,8 @@
 
       function getUserAgeForGoal(session) {
         if (!session) return null;
-        if (isGuestSession(session) && session.age != null) return session.age;
+        if (session.age != null) return session.age;
+        if (isGuestSession(session)) return null;
         const users = loadUsers();
         const u = users[session.email];
         return u?.age ?? null;
@@ -4495,13 +4596,54 @@
         if (!user) return toast("danger", "Account not found. Please sign up first.");
 
         const passwordHash = await sha256Hex(password);
-        if (passwordHash !== user.passwordHash) return toast("danger", "Incorrect password.");
 
-        saveSession({ email, name: user.name, country: user.country || "", loggedInAt: nowISO() });
+        let loginPayload = null;
+        try {
+          const { res, data } = await apiAuthFetch("/api/auth/login", {
+            method: "POST",
+            body: JSON.stringify({ email, passwordHash }),
+          });
+          if (res.ok && data.ok) {
+            loginPayload = data;
+          } else {
+            const local = loadUsers()[email];
+            if (local && local.passwordHash === passwordHash) {
+              const { bucket } = getSleepBucket(email);
+              const mig = await apiAuthFetch("/api/auth/migrate-local", {
+                method: "POST",
+                body: JSON.stringify({
+                  email,
+                  name: local.name,
+                  age: local.age,
+                  country: local.country || "",
+                  passwordHash,
+                  createdAt: local.createdAt,
+                  sleepBucket: bucket,
+                }),
+              });
+              if (mig.res.ok && mig.data.ok) loginPayload = mig.data;
+            }
+            if (!loginPayload) {
+              return toast("danger", data.error || "Account not found. Please sign up first.");
+            }
+          }
+        } catch {
+          const user = loadUsers()[email];
+          if (!user || user.passwordHash !== passwordHash) {
+            return toast("danger", "Cannot reach server. Check your connection and try again.");
+          }
+          saveSession({ email, name: user.name, country: user.country || "", age: user.age ?? null, loggedInAt: nowISO() });
+          refreshSessionUI("tracker");
+          setButtonPriorityStyles();
+          renderSleepMeta();
+          return toast("ok", `${user.name}, welcome! (offline — this device only)`);
+        }
+
+        applyServerAuthSuccess(loginPayload.user, loginPayload.token, passwordHash, loginPayload.sleepBucket);
         refreshSessionUI("tracker");
         setButtonPriorityStyles();
         renderSleepMeta();
-        toast("ok", `${user.name}, welcome!`);
+        toast("ok", `${loginPayload.user.name}, welcome!`);
       });
 
       // Signup
@@ -4542,21 +4684,43 @@
         const age = validateAge(ageRaw);
         if (!age.ok) return toast("danger", age.message);
 
-        const users = loadUsers();
-        if (users[email]) return toast("danger", "This email is already registered. Please log in.");
-
         const passwordHash = await sha256Hex(password);
         const countryToSave = isAnon ? COUNTRY_ANONYMOUS : resolvedCountry.displayName;
-        users[email] = {
-          name,
-          age: age.value,
-          country: countryToSave,
-          passwordHash,
-          createdAt: nowISO(),
-        };
-        saveUsers(users);
 
-        saveSession({ email, name, country: countryToSave || "", loggedInAt: nowISO() });
+        try {
+          const { res, data } = await apiAuthFetch("/api/auth/signup", {
+            method: "POST",
+            body: JSON.stringify({
+              email,
+              name,
+              age: age.value,
+              country: countryToSave,
+              passwordHash,
+              createdAt: nowISO(),
+            }),
+          });
+          if (!res.ok || !data.ok) {
+            return toast("danger", data.error || "Sign up failed. Please try again.");
+          }
+          applyServerAuthSuccess(data.user, data.token, passwordHash, null);
+        } catch {
+          const users = loadUsers();
+          if (users[email]) return toast("danger", "This email is already registered. Please log in.");
+          users[email] = {
+            name,
+            age: age.value,
+            country: countryToSave,
+            passwordHash,
+            createdAt: nowISO(),
+          };
+          saveUsers(users);
+          saveSession({ email, name, country: countryToSave || "", age: age.value, loggedInAt: nowISO() });
+          refreshSessionUI("tracker");
+          setButtonPriorityStyles();
+          renderSleepMeta();
+          return toast("ok", `${name}, welcome! (offline — this device only)`);
+        }
+
         refreshSessionUI("tracker");
         setButtonPriorityStyles();
         renderSleepMeta();
@@ -4614,6 +4778,12 @@
       } else {
         const bootSession = getCurrentSessionOrNull();
         if (bootSession && bootSession.email) {
+          if (bootSession.authToken && !isGuestSession(bootSession)) {
+            pullSleepBucketFromServer().then(() => {
+              renderSleepMeta();
+              setButtonPriorityStyles();
+            });
+          }
           toast("ok", `${bootSession.name}, you are already logged in.`);
         }
       }

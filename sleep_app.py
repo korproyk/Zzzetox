@@ -46,6 +46,7 @@ from pathlib import Path
 
 from flask import Flask, abort, jsonify, render_template, request, send_from_directory, url_for
 
+from account_store import get_account_store
 from nickname_validation import FORBIDDEN_TERMS, nickname_validation_error
 
 logger = logging.getLogger(__name__)
@@ -163,6 +164,173 @@ def api_validate_nickname():
     err = nickname_validation_error(name)
     if err:
         return jsonify({"ok": False, "error": err})
+    return jsonify({"ok": True})
+
+
+def _normalize_email_api(email: str) -> str:
+    return str(email or "").strip().lower()
+
+
+def _auth_token_from_request() -> str | None:
+    auth = request.headers.get("Authorization", "")
+    if auth.lower().startswith("bearer "):
+        return auth[7:].strip() or None
+    return request.headers.get("X-Auth-Token", "").strip() or None
+
+
+def _require_auth_email() -> str | tuple[dict, int]:
+    token = _auth_token_from_request()
+    if not token:
+        return {"ok": False, "error": "Authentication required."}, 401
+    email = get_account_store().resolve_token(token)
+    if not email:
+        return {"ok": False, "error": "Session expired. Please log in again."}, 401
+    return email
+
+
+@app.route("/api/auth/signup", methods=["POST"])
+def api_auth_signup():
+    """Register account on server (syncs across devices)."""
+    body = request.get_json(silent=True) or {}
+    email = _normalize_email_api(body.get("email", ""))
+    name = str(body.get("name", "")).strip()
+    country = str(body.get("country", "")).strip()
+    password_hash = str(body.get("passwordHash", "")).strip()
+    age = _parse_age(body.get("age"))
+
+    if not email:
+        return jsonify({"ok": False, "error": "Email is required."}), 400
+    if not name:
+        return jsonify({"ok": False, "error": "Nickname is required."}), 400
+    if not password_hash:
+        return jsonify({"ok": False, "error": "Password hash is required."}), 400
+    if not country:
+        return jsonify({"ok": False, "error": "Country is required."}), 400
+
+    err = nickname_validation_error(name)
+    if err:
+        return jsonify({"ok": False, "error": err}), 400
+
+    store = get_account_store()
+    try:
+        user = store.create_user(
+            email=email,
+            name=name,
+            age=age,
+            country=country,
+            password_hash=password_hash,
+            created_at=body.get("createdAt"),
+        )
+    except ValueError as exc:
+        if str(exc) == "email_already_registered":
+            return jsonify({"ok": False, "error": "This email is already registered. Please log in."}), 409
+        raise
+
+    token = store.issue_token(email)
+    logger.info("POST /api/auth/signup email=%r", email)
+    return jsonify({"ok": True, "user": user, "token": token})
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def api_auth_login():
+    """Verify credentials and return session token."""
+    body = request.get_json(silent=True) or {}
+    email = _normalize_email_api(body.get("email", ""))
+    password_hash = str(body.get("passwordHash", "")).strip()
+
+    if not email or not password_hash:
+        return jsonify({"ok": False, "error": "Email and password are required."}), 400
+
+    store = get_account_store()
+    user = store.verify_login(email, password_hash)
+    if not user:
+        return jsonify({"ok": False, "error": "Account not found or incorrect password."}), 401
+
+    token = store.issue_token(email)
+    bucket = store.get_sleep_bucket(email)
+    logger.info("POST /api/auth/login email=%r", email)
+    return jsonify({"ok": True, "user": user, "token": token, "sleepBucket": bucket})
+
+
+@app.route("/api/auth/migrate-local", methods=["POST"])
+def api_auth_migrate_local():
+    """
+    One-time upload of a device-only account created before server sync existed.
+    Creates the server account if the email is not registered yet.
+    """
+    body = request.get_json(silent=True) or {}
+    email = _normalize_email_api(body.get("email", ""))
+    name = str(body.get("name", "")).strip()
+    country = str(body.get("country", "")).strip()
+    password_hash = str(body.get("passwordHash", "")).strip()
+    age = _parse_age(body.get("age"))
+
+    if not email or not password_hash or not name:
+        return jsonify({"ok": False, "error": "Invalid migration payload."}), 400
+
+    store = get_account_store()
+    if store.get_user(email):
+        user = store.verify_login(email, password_hash)
+        if not user:
+            return jsonify({"ok": False, "error": "Account exists with a different password."}), 409
+        token = store.issue_token(email)
+        return jsonify(
+            {
+                "ok": True,
+                "user": user,
+                "token": token,
+                "sleepBucket": store.get_sleep_bucket(email),
+                "migrated": False,
+            }
+        )
+
+    try:
+        user = store.create_user(
+            email=email,
+            name=name,
+            age=age,
+            country=country,
+            password_hash=password_hash,
+            created_at=body.get("createdAt"),
+        )
+    except ValueError:
+        return jsonify({"ok": False, "error": "Migration failed."}), 409
+
+    sleep_local = body.get("sleepBucket")
+    if isinstance(sleep_local, dict):
+        store.save_sleep_bucket(email, sleep_local)
+
+    token = store.issue_token(email)
+    logger.info("POST /api/auth/migrate-local email=%r", email)
+    return jsonify(
+        {
+            "ok": True,
+            "user": user,
+            "token": token,
+            "sleepBucket": store.get_sleep_bucket(email),
+            "migrated": True,
+        }
+    )
+
+
+@app.route("/api/account/sleep", methods=["GET", "PUT"])
+def api_account_sleep():
+    """Load or save sleep tracking data for the logged-in account."""
+    auth = _require_auth_email()
+    if isinstance(auth, tuple):
+        payload, status = auth
+        return jsonify(payload), status
+    email = auth
+    store = get_account_store()
+
+    if request.method == "GET":
+        return jsonify({"ok": True, "sleepBucket": store.get_sleep_bucket(email)})
+
+    body = request.get_json(silent=True) or {}
+    bucket = body.get("sleepBucket")
+    if not isinstance(bucket, dict):
+        return jsonify({"ok": False, "error": "sleepBucket object required."}), 400
+    store.save_sleep_bucket(email, bucket)
     return jsonify({"ok": True})
 
 
