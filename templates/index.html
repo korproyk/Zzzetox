@@ -4591,10 +4591,6 @@
         }
         if (!password || password.length < 8) return toast("danger", "Password must be at least 8 characters.");
 
-        const users = loadUsers();
-        const user = users[email];
-        if (!user) return toast("danger", "Account not found. Please sign up first.");
-
         const passwordHash = await sha256Hex(password);
 
         let loginPayload = null;
@@ -4624,7 +4620,11 @@
               if (mig.res.ok && mig.data.ok) loginPayload = mig.data;
             }
             if (!loginPayload) {
-              return toast("danger", data.error || "Account not found. Please sign up first.");
+              return toast(
+                "danger",
+                data.error ||
+                  "Account not found on the server. Use the same app URL on every device, sign up here, or log in once on the phone where you first registered."
+              );
             }
           }
         } catch {
@@ -4643,7 +4643,7 @@
         refreshSessionUI("tracker");
         setButtonPriorityStyles();
         renderSleepMeta();
-        toast("ok", `${loginPayload.user.name}, welcome!`);
+        toast("ok", `${loginPayload.user.name}, welcome! (synced with server)`);
       });
 
       // Signup
@@ -4724,7 +4724,7 @@
         refreshSessionUI("tracker");
         setButtonPriorityStyles();
         renderSleepMeta();
-        toast("ok", `${name}, welcome!`);
+        toast("ok", `${name}, welcome! Account saved on the server — use the same URL on other devices.`);
       });
 
       $("bedtimeBtn").addEventListener("click", () => handleTwoStepClick("bedtime", startBedtime));
@@ -4742,7 +4742,6 @@
         true
       );
 
-      // Init: always start from login page on fresh app launch.
       const resetQuery = new URLSearchParams(location.search).get("reset");
       if (resetQuery === "1" || resetQuery === "true") {
         clearAllAppData();
@@ -4764,10 +4763,24 @@
       initCountryPicker();
       installAuthEnglishOnlyInputs();
       installZzzetoxEmailValidation();
-      clearSession();
-      refreshSessionUI("auth");
-      setButtonPriorityStyles();
-      renderSleepMeta();
+
+      const bootSession = getCurrentSessionOrNull();
+      if (bootSession && bootSession.email) {
+        refreshSessionUI(resolveLoggedInPage("tracker"));
+        setButtonPriorityStyles();
+        renderSleepMeta();
+        if (bootSession.authToken && !isGuestSession(bootSession)) {
+          pullSleepBucketFromServer().then(() => {
+            renderSleepMeta();
+            setButtonPriorityStyles();
+          });
+        }
+      } else {
+        refreshSessionUI("auth");
+        setButtonPriorityStyles();
+        renderSleepMeta();
+      }
+
       window.setInterval(() => {
         setButtonPriorityStyles();
         renderSleepMeta();
@@ -4775,17 +4788,6 @@
 
       if (resetQuery === "1" || resetQuery === "true") {
         toast("ok", "All accounts and sleep data on this device were cleared.");
-      } else {
-        const bootSession = getCurrentSessionOrNull();
-        if (bootSession && bootSession.email) {
-          if (bootSession.authToken && !isGuestSession(bootSession)) {
-            pullSleepBucketFromServer().then(() => {
-              renderSleepMeta();
-              setButtonPriorityStyles();
-            });
-          }
-          toast("ok", `${bootSession.name}, you are already logged in.`);
-        }
       }
     </script>
   </body>
