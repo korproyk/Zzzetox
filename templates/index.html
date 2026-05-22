@@ -1018,63 +1018,350 @@
         100% { color: #ffffff; }
       }
 
-      .progress-page {
+      .goal-page {
         min-height: 56vh;
         display: grid;
         place-items: center;
-        position: relative;
       }
 
-      .progress-wrap {
-        text-align: center;
+      .goal-wrap {
+        width: 100%;
+        max-width: 420px;
         display: grid;
-        gap: 14px;
-        justify-items: center;
+        gap: 18px;
+        justify-items: stretch;
+        text-align: center;
       }
 
-      .progress-head {
-        display: inline-flex;
-        align-items: center;
+      .goal-title {
+        margin: 0;
+        font-size: clamp(28px, 6vw, 40px);
+        letter-spacing: -0.03em;
+      }
+
+      .goal-age-hint {
+        margin: 0;
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.72);
+        line-height: 1.5;
+      }
+
+      .goal-options {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
         gap: 10px;
       }
 
-      .progress-title {
-        margin: 0;
-        font-size: clamp(34px, 6.5vw, 68px);
-        letter-spacing: -0.03em;
-        line-height: 1.1;
+      .goal-option-btn {
+        appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.92);
+        border-radius: 14px;
+        padding: 16px 10px;
+        font-size: clamp(18px, 4vw, 24px);
+        font-weight: 800;
+        cursor: pointer;
+        transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
       }
 
-      .progress-count {
-        display: inline-block;
-        animation: aiCountBlink 0.8s infinite;
+      .goal-option-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateY(-1px);
       }
 
-      .progress-sub {
-        margin: 0;
-        font-size: 14px;
-        color: rgba(255,255,255,0.70);
+      .goal-option-btn.is-selected {
+        border-color: rgba(52, 211, 153, 0.55);
+        background: linear-gradient(180deg, rgba(52, 211, 153, 0.22), rgba(255, 255, 255, 0.06));
+        box-shadow: 0 12px 28px rgba(52, 211, 153, 0.15);
       }
 
-      .daily-feedback {
-        margin-top: 8px;
+      .goal-option-btn:focus-visible {
+        outline: 2px solid rgba(34, 211, 238, 0.55);
+        outline-offset: 2px;
+      }
+
+      .goal-save-btn[disabled] {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      .progress-page {
+        min-height: auto;
+        position: relative;
+        padding-bottom: 8px;
+      }
+
+      .ai-daily-stack {
         display: grid;
-        gap: 6px;
-        justify-items: center;
-        text-align: center;
+        gap: 14px;
+        width: 100%;
       }
 
-      .daily-feedback-main {
+      .ai-daily-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        text-align: left;
+      }
+
+      .ai-daily-header-copy {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .ai-daily-header-title {
+        margin: 0 0 6px;
+        font-size: clamp(22px, 5vw, 30px);
+        letter-spacing: -0.03em;
+        line-height: 1.15;
+      }
+
+      .ai-daily-header-sub {
         margin: 0;
-        font-size: clamp(20px, 3.6vw, 36px);
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.68);
+        line-height: 1.45;
+      }
+
+      .ai-daily-card {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 16px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+        padding: 16px;
+      }
+
+      .ai-sleep-card {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 12px 14px;
+        align-items: center;
+      }
+
+      .ai-sleep-moon {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        font-size: 28px;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(34, 211, 238, 0.2));
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      .ai-sleep-main {
+        min-width: 0;
+        text-align: left;
+      }
+
+      .ai-sleep-label {
+        margin: 0 0 4px;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.72);
+      }
+
+      .ai-sleep-time {
+        margin: 0;
+        font-size: clamp(26px, 6vw, 36px);
         font-weight: 900;
+        letter-spacing: -0.02em;
+        color: #4ade80;
+        line-height: 1.1;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .ai-sleep-compare {
+        margin: 6px 0 0;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.62);
+        line-height: 1.4;
+      }
+
+      .ai-sleep-goal-col {
+        display: grid;
+        justify-items: end;
+        gap: 6px;
+        text-align: right;
+      }
+
+      .ai-goal-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(74, 222, 128, 0.45);
+        background: rgba(74, 222, 128, 0.12);
+        color: #86efac;
+        font-size: 11px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .ai-goal-badge[hidden] {
+        display: none;
+      }
+
+      .ai-goal-badge-icon {
+        width: 16px;
+        height: 16px;
+        border-radius: 999px;
+        background: rgba(74, 222, 128, 0.25);
+        display: grid;
+        place-items: center;
+        font-size: 10px;
+        line-height: 1;
+      }
+
+      .ai-goal-hours {
+        margin: 0;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.58);
+      }
+
+      .ai-progress-card-head {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 14px;
+        text-align: left;
+      }
+
+      .ai-progress-card-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        font-size: 22px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        flex-shrink: 0;
+      }
+
+      .ai-progress-card-title {
+        margin: 0 0 4px;
+        font-size: 16px;
+        font-weight: 800;
         letter-spacing: -0.02em;
       }
 
-      .daily-feedback-sub {
+      .ai-progress-card-sub {
         margin: 0;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.65);
+        line-height: 1.45;
+      }
+
+      .ai-day-track {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 6px;
+        align-items: start;
+        margin-bottom: 12px;
+      }
+
+      .ai-day-node {
+        display: grid;
+        justify-items: center;
+        gap: 6px;
+        min-width: 0;
+      }
+
+      .ai-day-dot {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        border: 2px solid rgba(96, 165, 250, 0.55);
+        background: transparent;
+        color: rgba(147, 197, 253, 0.95);
+        display: grid;
+        place-items: center;
+        font-size: 11px;
+        font-weight: 800;
+        position: relative;
+        z-index: 1;
+      }
+
+      .ai-day-dot.is-done {
+        border-color: rgba(74, 222, 128, 0.7);
+        background: rgba(74, 222, 128, 0.18);
+        color: #86efac;
+      }
+
+      .ai-day-dot.is-current {
+        border-color: rgba(96, 165, 250, 0.9);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+      }
+
+      .ai-day-label {
+        font-size: 10px;
+        color: rgba(255, 255, 255, 0.55);
+        text-align: center;
+        line-height: 1.2;
+      }
+
+      .ai-day-label.is-current {
+        color: rgba(147, 197, 253, 0.95);
+        font-weight: 700;
+      }
+
+      .ai-day-track-line {
+        grid-column: 1 / -1;
+        height: 2px;
+        margin: -22px 14px 0;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+        position: relative;
+        z-index: 0;
+      }
+
+      .ai-progress-status {
+        margin: 0;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(20, 83, 45, 0.35);
+        border: 1px solid rgba(74, 222, 128, 0.22);
+        color: #86efac;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.45;
+        text-align: left;
+      }
+
+      .ai-tip-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 12px;
+      }
+
+      .ai-tip-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
         font-size: 14px;
-        color: rgba(255,255,255,0.78);
+        background: rgba(59, 130, 246, 0.2);
+        border: 1px solid rgba(96, 165, 250, 0.35);
+        flex-shrink: 0;
+      }
+
+      .ai-tip-label {
+        margin: 0 0 2px;
+        font-size: 11px;
+        font-weight: 800;
+        color: rgba(147, 197, 253, 0.95);
+      }
+
+      .ai-tip-text {
+        margin: 0;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.62);
+        line-height: 1.4;
+        text-align: left;
       }
 
       .next-feedback-btn {
@@ -1775,6 +2062,17 @@
       </section>
     </main>
 
+    <main class="app app-single" id="goalPage" aria-label="Set sleep goal" hidden>
+      <section class="card goal-page" aria-label="Set Your Goal">
+        <div class="panel goal-wrap">
+          <h2 class="goal-title">Set Your Goal:</h2>
+          <p class="goal-age-hint" id="goalAgeHint">Choose your nightly sleep goal.</p>
+          <div class="goal-options" id="goalOptions" role="group" aria-label="Sleep goal hours"></div>
+          <button type="button" class="btn primary goal-save-btn" id="goalSaveBtn" disabled>Continue</button>
+        </div>
+      </section>
+    </main>
+
     <main class="app app-single" id="trackerPage" aria-label="Sleep Tracker Page" hidden>
       <section class="card" aria-label="Sleep Data Collection">
         <div class="panel sleep-section" id="sleepSection" aria-hidden="false">
@@ -1814,21 +2112,53 @@
 
     <main class="app app-single" id="aiProgressPage" aria-label="AI Feedback Progress Page" hidden>
       <section class="card progress-page" aria-label="AI Feedback Progress">
-        <div class="panel progress-wrap">
-          <div class="progress-head">
-            <h2 class="progress-title" id="progressTitle">
-              Until AI feedbacks: <span class="progress-count" id="progressCount">(1/7)</span>
-            </h2>
+        <div class="panel ai-daily-stack">
+          <div class="ai-daily-header">
+            <div class="ai-daily-header-copy">
+              <h2 class="ai-daily-header-title" id="progressHeaderTitle">Get AI feedback!</h2>
+              <p class="ai-daily-header-sub" id="progressHeaderSub">See how your sleep was and get personalized AI insights.</p>
+            </div>
             <button type="button" class="next-feedback-btn" id="nextFeedbackBtn" hidden aria-label="Continue to AI feedback">
               <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22">
                 <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z" />
               </svg>
             </button>
           </div>
-          <p class="progress-sub">Get a not-the-best AI feedback?</p>
-          <div class="daily-feedback">
-            <p class="daily-feedback-main" id="dailySleepTime">Your sleep time: (00:00:00)</p>
-            <p class="daily-feedback-sub" id="dailyCompareText">Log one more day to compare with yesterday.</p>
+
+          <div class="ai-daily-card ai-sleep-card">
+            <div class="ai-sleep-moon" aria-hidden="true">🌙</div>
+            <div class="ai-sleep-main">
+              <p class="ai-sleep-label">Your sleep time</p>
+              <p class="ai-sleep-time" id="dailySleepTime">00:00:00</p>
+              <p class="ai-sleep-compare" id="dailyCompareText">Log one more day to compare with yesterday.</p>
+            </div>
+            <div class="ai-sleep-goal-col">
+              <div class="ai-goal-badge" id="goalAchievedBadge" hidden>
+                <span class="ai-goal-badge-icon" aria-hidden="true">✓</span>
+                <span>Goal Achieved</span>
+              </div>
+              <p class="ai-goal-hours" id="goalHoursLabel">Goal: — hours</p>
+            </div>
+          </div>
+
+          <div class="ai-daily-card ai-progress-card">
+            <div class="ai-progress-card-head">
+              <div class="ai-progress-card-icon" aria-hidden="true">📅</div>
+              <div>
+                <p class="ai-progress-card-title" id="progressCardTitle">AI feedbacks available soon!</p>
+                <p class="ai-progress-card-sub" id="progressCardSub">Complete all 7 days to unlock AI feedbacks. You're almost there!</p>
+              </div>
+            </div>
+            <div class="ai-day-track" id="aiDayTrack" aria-label="7-day AI feedback progress"></div>
+            <p class="ai-progress-status" id="aiProgressStatus">✨ 7 days left! Keep logging sleep to unlock AI feedback.</p>
+          </div>
+
+          <div class="ai-daily-card ai-tip-card">
+            <div class="ai-tip-icon" aria-hidden="true">💡</div>
+            <div>
+              <p class="ai-tip-label">Tip</p>
+              <p class="ai-tip-text">Try to keep a consistent sleep schedule for more accurate feedback!</p>
+            </div>
           </div>
         </div>
         <button type="button" class="return-sleep-btn" id="returnSleepBtn">Return to sleep</button>
@@ -2727,8 +3057,11 @@
         card.removeAttribute("inert");
       }
 
+      let selectedGoalHours = null;
+
       function showPage(pageName) {
         $("authPage").hidden = pageName !== "auth";
+        $("goalPage").hidden = pageName !== "goal";
         $("trackerPage").hidden = pageName !== "tracker";
         $("aiProgressPage").hidden = pageName !== "progress";
         $("aiFeedbackPage").hidden = pageName !== "feedback";
@@ -2874,12 +3207,94 @@
         renderTrackerSessionChip(session);
       }
 
+      function hasSleepGoal(email) {
+        const h = Number(getSleepBucket(email).bucket.sleepGoalHours);
+        return Number.isFinite(h) && h > 0;
+      }
+
+      function getSleepGoalHours(email) {
+        const h = Number(getSleepBucket(email).bucket.sleepGoalHours);
+        return Number.isFinite(h) && h > 0 ? h : null;
+      }
+
+      function resolveLoggedInPage(preferredPage) {
+        const session = getCurrentSessionOrNull();
+        if (!session) return "auth";
+        if (preferredPage === "tracker" && !hasSleepGoal(session.email)) return "goal";
+        return preferredPage;
+      }
+
+      function getUserAgeForGoal(session) {
+        if (!session) return null;
+        if (isGuestSession(session) && session.age != null) return session.age;
+        const users = loadUsers();
+        const u = users[session.email];
+        return u?.age ?? null;
+      }
+
+      function getSleepGoalOptionsForAge(age) {
+        const a = Number(age);
+        if (Number.isFinite(a) && a >= 13 && a <= 17) return [8, 9, 10];
+        return [7, 8, 9];
+      }
+
+      function renderGoalPage() {
+        const session = getCurrentSessionOrNull();
+        if (!session) return;
+        const age = getUserAgeForGoal(session);
+        const options = getSleepGoalOptionsForAge(age);
+        const hint = $("goalAgeHint");
+        if (Number.isFinite(Number(age)) && age >= 13 && age <= 17) {
+          hint.textContent = "Ages 13–17: choose 8, 9, or 10 hours.";
+        } else if (Number.isFinite(Number(age)) && age >= 18 && age <= 40) {
+          hint.textContent = "Ages 18–40: choose 7, 8, or 9 hours.";
+        } else {
+          hint.textContent = "Choose your nightly sleep goal (default: ages 18–40).";
+        }
+        const wrap = $("goalOptions");
+        wrap.replaceChildren();
+        selectedGoalHours = getSleepGoalHours(session.email);
+        for (const hours of options) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "goal-option-btn";
+          btn.textContent = `${hours}h`;
+          btn.dataset.hours = String(hours);
+          if (selectedGoalHours === hours) btn.classList.add("is-selected");
+          btn.addEventListener("click", () => {
+            selectedGoalHours = hours;
+            wrap.querySelectorAll(".goal-option-btn").forEach((b) => {
+              b.classList.toggle("is-selected", Number(b.dataset.hours) === hours);
+            });
+            $("goalSaveBtn").disabled = false;
+          });
+          wrap.appendChild(btn);
+        }
+        $("goalSaveBtn").disabled = selectedGoalHours == null;
+      }
+
+      function saveSleepGoal(hours) {
+        const session = getCurrentSessionOrNull();
+        if (!session) return;
+        const { store, bucket } = getSleepBucket(session.email);
+        bucket.sleepGoalHours = hours;
+        store[session.email] = bucket;
+        saveSleepStore(store);
+      }
+
+      function isSleepGoalAchieved(durationMs, goalHours) {
+        if (!goalHours || goalHours <= 0) return false;
+        return Number(durationMs) >= goalHours * 60 * 60 * 1000;
+      }
+
       function refreshSessionUI(preferredPageForLoggedIn = "tracker") {
         const session = getCurrentSessionOrNull();
         applyGuestUiRestrictions();
         if (session && session.email) {
           renderSessionChips(session);
-          showPage(preferredPageForLoggedIn);
+          const page = resolveLoggedInPage(preferredPageForLoggedIn);
+          if (page === "goal") renderGoalPage();
+          showPage(page);
         } else {
           renderSessionChips(null);
           showPage("auth");
@@ -3013,7 +3428,8 @@
 
       function getSleepBucket(email) {
         const store = loadSleepStore();
-        const bucket = store[email] || { activeStartAt: null, history: [] };
+        const bucket = store[email] || { activeStartAt: null, history: [], sleepGoalHours: null };
+        if (bucket.sleepGoalHours === undefined) bucket.sleepGoalHours = null;
         return { store, bucket };
       }
 
@@ -3037,6 +3453,38 @@
         return (Math.abs(ms) / (1000 * 60 * 60)).toFixed(1);
       }
 
+      function renderAiDayTrack(completedDays) {
+        const track = $("aiDayTrack");
+        if (!track) return;
+        track.replaceChildren();
+        const line = document.createElement("div");
+        line.className = "ai-day-track-line";
+        line.setAttribute("aria-hidden", "true");
+        track.appendChild(line);
+        const done = Math.min(7, Math.max(0, completedDays));
+        for (let i = 1; i <= 7; i++) {
+          const node = document.createElement("div");
+          node.className = "ai-day-node";
+          const dot = document.createElement("div");
+          dot.className = "ai-day-dot";
+          const label = document.createElement("div");
+          label.className = "ai-day-label";
+          label.textContent = `Day ${i}`;
+          if (i <= done) {
+            dot.classList.add("is-done");
+            dot.textContent = "✓";
+          } else if (i === done + 1) {
+            dot.classList.add("is-current");
+            dot.textContent = String(i);
+            label.classList.add("is-current");
+          } else {
+            dot.textContent = String(i);
+          }
+          node.append(dot, label);
+          track.appendChild(node);
+        }
+      }
+
       function renderDailyFeedback() {
         const session = getCurrentSessionOrNull();
         if (!session) return;
@@ -3044,18 +3492,27 @@
         const list = bucket.history;
         const sleepEl = $("dailySleepTime");
         const compareEl = $("dailyCompareText");
+        const goalBadge = $("goalAchievedBadge");
+        const goalHoursLabel = $("goalHoursLabel");
+        const goalHours = getSleepGoalHours(session.email);
+
+        if (goalHoursLabel) {
+          goalHoursLabel.textContent = goalHours ? `Goal: ${goalHours} hours` : "Goal: — hours";
+        }
 
         if (!list.length) {
-          sleepEl.textContent = "Your sleep time: (00:00:00)";
-          compareEl.textContent = "Log one more day to compare with yesterday.";
+          if (sleepEl) sleepEl.textContent = "00:00:00";
+          if (compareEl) compareEl.textContent = "Log one more day to compare with yesterday.";
+          if (goalBadge) goalBadge.hidden = true;
           return;
         }
 
         const latest = list[list.length - 1];
-        sleepEl.textContent = `Your sleep time: (${latest.durationText})`;
+        if (sleepEl) sleepEl.textContent = latest.durationText || "00:00:00";
+        if (goalBadge) goalBadge.hidden = !isSleepGoalAchieved(latest.durationMs, goalHours);
 
         if (list.length < 2) {
-          compareEl.textContent = "Log one more day to compare with yesterday.";
+          if (compareEl) compareEl.textContent = "Log one more day to compare with yesterday.";
           return;
         }
 
@@ -3075,16 +3532,32 @@
         const session = getCurrentSessionOrNull();
         if (!session) return;
         const weekly = getWeeklyProgress(session.email);
-        const progressTitle = $("progressTitle");
         const nextFeedbackBtn = $("nextFeedbackBtn");
+        const completedDays = weekly.canGetWeeklyFeedback ? 7 : weekly.cycleCount;
+        const daysLeft = Math.max(0, 7 - completedDays);
+
+        if (nextFeedbackBtn) nextFeedbackBtn.hidden = !weekly.canGetWeeklyFeedback;
+
+        const cardTitle = $("progressCardTitle");
+        const cardSub = $("progressCardSub");
+        const statusEl = $("aiProgressStatus");
         if (weekly.canGetWeeklyFeedback) {
-          progressTitle.textContent = "Get AI feedback?";
-          nextFeedbackBtn.hidden = false;
-          renderDailyFeedback();
-          return;
+          if (cardTitle) cardTitle.textContent = "AI feedbacks ready!";
+          if (cardSub) cardSub.textContent = "All 7 days are complete. Tap the arrow to get your AI feedback.";
+          if (statusEl) statusEl.textContent = "✨ All 7 days complete! Tap the arrow to get your AI feedback.";
+        } else if (daysLeft === 1) {
+          if (cardTitle) cardTitle.textContent = "AI feedbacks available soon!";
+          if (cardSub) cardSub.textContent = "Complete all 7 days to unlock AI feedbacks. You're almost there!";
+          if (statusEl) statusEl.textContent = "✨ 1 day left! Complete tomorrow to get your AI feedback.";
+        } else {
+          if (cardTitle) cardTitle.textContent = "AI feedbacks available soon!";
+          if (cardSub) cardSub.textContent = "Complete all 7 days to unlock AI feedbacks. You're almost there!";
+          if (statusEl) {
+            statusEl.textContent = `✨ ${daysLeft} days left! Keep logging sleep to unlock AI feedback.`;
+          }
         }
-        nextFeedbackBtn.hidden = true;
-        progressTitle.innerHTML = `Until AI feedbacks: <span class="progress-count" id="progressCount">(${weekly.cycleCount}/7)</span>`;
+
+        renderAiDayTrack(completedDays);
         renderDailyFeedback();
       }
 
@@ -3271,6 +3744,22 @@
       });
       $("guestDeviceNoticeCloseBtn").addEventListener("click", () => {
         hideGuestDeviceNotice();
+      });
+
+      $("goalSaveBtn").addEventListener("click", () => {
+        const session = getCurrentSessionOrNull();
+        if (!session) {
+          showPage("auth");
+          return;
+        }
+        if (selectedGoalHours == null) {
+          return toast("danger", "Please select a sleep goal.");
+        }
+        saveSleepGoal(selectedGoalHours);
+        refreshSessionUI("tracker");
+        setButtonPriorityStyles();
+        renderSleepMeta();
+        toast("ok", `Sleep goal set to ${selectedGoalHours} hours.`);
       });
       $("signupBackBtn").addEventListener("click", () => {
         showAuthLandingMode();
