@@ -1445,13 +1445,18 @@
         width: 40px;
         height: 40px;
         border-radius: 999px;
-        border: 1px solid rgba(255,255,255,0.35);
-        background: rgba(255,255,255,0.10);
+        border: 1px solid rgba(139, 92, 246, 0.85);
+        background: rgba(255, 255, 255, 0.1);
         color: #ffffff;
         display: grid;
         place-items: center;
         padding: 0;
         cursor: pointer;
+        box-shadow:
+          0 0 0 1px rgba(139, 92, 246, 0.4),
+          0 0 10px rgba(139, 92, 246, 0.55),
+          0 0 22px rgba(139, 92, 246, 0.28);
+        transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
       }
 
       .next-feedback-btn svg {
@@ -1466,30 +1471,37 @@
 
       .next-feedback-btn:hover {
         transform: translateY(-1px);
-        background: rgba(255,255,255,0.16);
+        background: rgba(255, 255, 255, 0.16);
+        box-shadow:
+          0 0 0 1px rgba(167, 139, 250, 0.65),
+          0 0 14px rgba(139, 92, 246, 0.75),
+          0 0 28px rgba(139, 92, 246, 0.4);
       }
 
       .next-feedback-btn[hidden] { display: none; }
 
-      .feedback-page-next-row {
+      .topbar-nav-actions {
         display: flex;
-        justify-content: flex-end;
+        flex-direction: row;
         align-items: center;
-        margin: 4px 8px 2px;
-        min-height: 44px;
-      }
-
-      .feedback-page-next-row .next-feedback-btn {
+        justify-content: flex-end;
+        gap: 16px;
         flex-shrink: 0;
+        margin-left: auto;
       }
 
-      .feedback-page-nav-corner {
-        position: absolute;
-        right: 18px;
-        bottom: 18px;
-        margin: 0;
-        min-height: 0;
-        z-index: 2;
+      .topbar-nav-actions .home-btn {
+        width: 40px;
+        height: 40px;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: none;
+      }
+
+      .topbar-nav-actions .home-btn:hover {
+        background: rgba(255, 255, 255, 0.14);
+        box-shadow: none;
+        transform: translateY(-1px);
       }
 
       #countryRankingsPage .feedback-page {
@@ -2356,25 +2368,20 @@
         <div class="panel" aria-hidden="false">
           <div class="writing-topbar">
             <h2 class="feedback-page-title" id="aiFeedbackPageTitle">AI sleep feedback</h2>
-            <button type="button" class="home-btn" id="feedbackHomeBtn" aria-label="Back to sleep tracker">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 3.2 3 10.4v10.4a1 1 0 0 0 1 1h5.5a1 1 0 0 0 1-1v-5h3v5a1 1 0 0 0 1 1H20a1 1 0 0 0 1-1V10.4L12 3.2z"/>
-              </svg>
-            </button>
+            <div class="topbar-nav-actions">
+              <button
+                type="button"
+                class="next-feedback-btn"
+                id="feedbackRecommendationNavBtn"
+                aria-label="View sleep recommendation"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22">
+                  <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z" />
+                </svg>
+              </button>
+            </div>
           </div>
           <hr class="writing-divider" aria-hidden="true" />
-          <div class="feedback-page-next-row">
-            <button
-              type="button"
-              class="next-feedback-btn"
-              id="feedbackScoreNavBtn"
-              aria-label="View sleep score and level"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22">
-                <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z" />
-              </svg>
-            </button>
-          </div>
           <p class="ai-feedback-meta" id="aiFeedbackMeta" aria-live="polite"></p>
           <div class="ai-feedback-loading" id="aiFeedbackLoading">Connecting to the server and generating feedback…</div>
           <div class="ai-feedback-error" id="aiFeedbackError" hidden role="alert"></div>
@@ -2393,26 +2400,26 @@
       <section class="card feedback-page" aria-label="Sleep score and level">
         <div class="panel sleep-score-panel" aria-hidden="false">
           <div class="writing-topbar">
-            <h2 class="feedback-page-title" id="sleepScorePageTitle">Sleep score</h2>
-            <button type="button" class="home-btn" id="scoreBackToFeedbackBtn" aria-label="Back to AI feedback">
-              <svg viewBox="0 0 24 24" aria-hidden="true" width="23" height="23">
-                <path fill="#ffffff" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-              </svg>
-            </button>
+            <h2 class="feedback-page-title" id="sleepScorePageTitle">Sleep Point &amp; Level</h2>
+            <div class="topbar-nav-actions">
+              <button type="button" class="home-btn" id="scoreBackToRecommendationBtn" aria-label="Back to sleep recommendation">
+                <svg viewBox="0 0 24 24" aria-hidden="true" width="23" height="23">
+                  <path fill="#ffffff" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="next-feedback-btn"
+                id="scoreRankingsNavBtn"
+                aria-label="View country score rankings"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22">
+                  <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z" />
+                </svg>
+              </button>
+            </div>
           </div>
           <hr class="writing-divider" aria-hidden="true" />
-          <div class="feedback-page-next-row">
-            <button
-              type="button"
-              class="next-feedback-btn"
-              id="scoreRecommendationNavBtn"
-              aria-label="View sleep recommendation"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22">
-                <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z" />
-              </svg>
-            </button>
-          </div>
           <div class="sleep-score-hero" id="sleepScoreHero">
             <img
               id="sleepLevelImage"
@@ -2437,11 +2444,23 @@
         <div class="panel" aria-hidden="false">
           <div class="writing-topbar">
             <h2 class="feedback-page-title" id="sleepRecommendationPageTitle">Sleep Recommendation</h2>
-            <button type="button" class="home-btn" id="recommendationBackToScoreBtn" aria-label="Back to sleep score">
-              <svg viewBox="0 0 24 24" aria-hidden="true" width="23" height="23">
-                <path fill="#ffffff" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-              </svg>
-            </button>
+            <div class="topbar-nav-actions">
+              <button type="button" class="home-btn" id="recommendationBackToFeedbackBtn" aria-label="Back to AI feedback">
+                <svg viewBox="0 0 24 24" aria-hidden="true" width="23" height="23">
+                  <path fill="#ffffff" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="next-feedback-btn"
+                id="recommendationScoreNavBtn"
+                aria-label="View sleep point and level"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22">
+                  <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z" />
+                </svg>
+              </button>
+            </div>
           </div>
           <hr class="writing-divider" aria-hidden="true" />
           <div class="sleep-rec-layout">
@@ -2463,18 +2482,6 @@
             </div>
           </div>
         </div>
-        <div class="feedback-page-next-row feedback-page-nav-corner">
-          <button
-            type="button"
-            class="next-feedback-btn"
-            id="recommendationRankingsNavBtn"
-            aria-label="View country score rankings"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22">
-              <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z" />
-            </svg>
-          </button>
-        </div>
       </section>
     </main>
 
@@ -2483,11 +2490,13 @@
         <div class="panel" aria-hidden="false">
           <div class="writing-topbar">
             <h2 class="feedback-page-title" id="countryRankingsPageTitle">Country rankings</h2>
-            <button type="button" class="home-btn" id="rankingsBackToRecommendationBtn" aria-label="Back to sleep recommendation">
-              <svg viewBox="0 0 24 24" aria-hidden="true" width="23" height="23">
-                <path fill="#ffffff" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-              </svg>
-            </button>
+            <div class="topbar-nav-actions">
+              <button type="button" class="home-btn" id="rankingsBackToScoreBtn" aria-label="Back to sleep point and level">
+                <svg viewBox="0 0 24 24" aria-hidden="true" width="23" height="23">
+                  <path fill="#ffffff" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                </svg>
+              </button>
+            </div>
           </div>
           <hr class="writing-divider" aria-hidden="true" />
           <p class="country-rankings-intro" id="countryRankingsIntro"></p>
@@ -3572,7 +3581,7 @@
 
       function applyGuestUiRestrictions() {
         const guest = isGuestSession(getCurrentSessionOrNull());
-        const rankingsBtn = $("recommendationRankingsNavBtn");
+        const rankingsBtn = $("scoreRankingsNavBtn");
         if (rankingsBtn) rankingsBtn.hidden = guest;
       }
 
@@ -4907,30 +4916,7 @@
         });
       }
 
-      $("feedbackScoreNavBtn").addEventListener("click", () => {
-        const session = getCurrentSessionOrNull();
-        if (!session) {
-          showPage("auth");
-          return;
-        }
-        renderSleepScorePage();
-        showPage("score");
-      });
-
-      $("scoreBackToFeedbackBtn").addEventListener("click", () => {
-        const session = getCurrentSessionOrNull();
-        if (!session) {
-          showPage("auth");
-          return;
-        }
-        showPage("feedback");
-      });
-
-      $("scoreReturnSleepBtn").addEventListener("click", () => {
-        goTrackerFromFeedback();
-      });
-
-      $("scoreRecommendationNavBtn").addEventListener("click", () => {
+      $("feedbackRecommendationNavBtn").addEventListener("click", () => {
         const session = getCurrentSessionOrNull();
         if (!session) {
           showPage("auth");
@@ -4940,7 +4926,16 @@
         showPage("recommendation");
       });
 
-      $("recommendationBackToScoreBtn").addEventListener("click", () => {
+      $("recommendationBackToFeedbackBtn").addEventListener("click", () => {
+        const session = getCurrentSessionOrNull();
+        if (!session) {
+          showPage("auth");
+          return;
+        }
+        showPage("feedback");
+      });
+
+      $("recommendationScoreNavBtn").addEventListener("click", () => {
         const session = getCurrentSessionOrNull();
         if (!session) {
           showPage("auth");
@@ -4950,7 +4945,21 @@
         showPage("score");
       });
 
-      $("recommendationRankingsNavBtn").addEventListener("click", () => {
+      $("scoreBackToRecommendationBtn").addEventListener("click", () => {
+        const session = getCurrentSessionOrNull();
+        if (!session) {
+          showPage("auth");
+          return;
+        }
+        renderSleepRecommendationPage();
+        showPage("recommendation");
+      });
+
+      $("scoreReturnSleepBtn").addEventListener("click", () => {
+        goTrackerFromFeedback();
+      });
+
+      $("scoreRankingsNavBtn").addEventListener("click", () => {
         const session = getCurrentSessionOrNull();
         if (!session) {
           showPage("auth");
@@ -4964,21 +4973,17 @@
         showPage("rankings");
       });
 
-      $("rankingsBackToRecommendationBtn").addEventListener("click", () => {
+      $("rankingsBackToScoreBtn").addEventListener("click", () => {
         const session = getCurrentSessionOrNull();
         if (!session) {
           showPage("auth");
           return;
         }
-        renderSleepRecommendationPage();
-        showPage("recommendation");
+        renderSleepScorePage();
+        showPage("score");
       });
 
       $("rankingsReturnSleepBtn").addEventListener("click", () => {
-        goTrackerFromFeedback();
-      });
-
-      $("feedbackHomeBtn").addEventListener("click", () => {
         goTrackerFromFeedback();
       });
 
