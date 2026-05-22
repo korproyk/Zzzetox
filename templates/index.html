@@ -33,6 +33,25 @@
         display: grid;
         place-items: center;
         padding: 28px 16px;
+        position: relative;
+      }
+
+      #starfield {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      body > main {
+        position: relative;
+        z-index: 1;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #starfield { display: none; }
       }
 
       .app {
@@ -1400,6 +1419,7 @@
     </style>
   </head>
   <body>
+    <canvas id="starfield" aria-hidden="true"></canvas>
     <main class="app app-single auth-landing" id="authPage" aria-label="Sleep Challenge Login/Signup">
       <section class="hero" aria-label="Introduction">
         <div class="brand">
@@ -1434,6 +1454,7 @@
             <div class="field">
               <label for="loginEmail">Email</label>
               <input id="loginEmail" name="email" type="email" placeholder="ID: " required />
+              <p class="signup-name-hint" id="loginEmailHint" aria-live="polite"></p>
             </div>
             <div class="field">
               <label for="loginPassword">Password</label>
@@ -1489,7 +1510,8 @@
 
             <div class="field">
               <label for="signupEmail">Email</label>
-              <input id="signupEmail" name="email" type="email" placeholder="name@example.com" required />
+              <input id="signupEmail" name="email" type="email" placeholder="_____@zzzetox.com" required />
+              <p class="signup-name-hint" id="signupEmailHint" aria-live="polite"></p>
             </div>
 
             <div class="row">
@@ -1754,6 +1776,84 @@
     <script type="application/json" id="sleepLevelImageUrlsJson">{{ sleep_level_image_urls|default({}, true)|tojson }}</script>
 
     <script>
+      (function initFallingStars() {
+        const canvas = document.getElementById("starfield");
+        if (!canvas) return;
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        let stars = [];
+        let w = 0;
+        let h = 0;
+        let dpr = 1;
+        let rafId = 0;
+
+        function makeStar(spreadY) {
+          return {
+            x: Math.random() * w,
+            y: spreadY ? Math.random() * h : -6 - Math.random() * 40,
+            r: 0.35 + Math.random() * 0.9,
+            vy: 0.12 + Math.random() * 0.28,
+            vx: (Math.random() - 0.5) * 0.06,
+            phase: Math.random() * Math.PI * 2,
+            twinkle: 0.25 + Math.random() * 0.35,
+          };
+        }
+
+        function resize() {
+          dpr = Math.min(window.devicePixelRatio || 1, 2);
+          w = window.innerWidth;
+          h = window.innerHeight;
+          canvas.width = Math.floor(w * dpr);
+          canvas.height = Math.floor(h * dpr);
+          canvas.style.width = w + "px";
+          canvas.style.height = h + "px";
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          const count = Math.max(48, Math.min(140, Math.floor((w * h) / 12000)));
+          stars = Array.from({ length: count }, () => makeStar(true));
+        }
+
+        function tick(now) {
+          ctx.clearRect(0, 0, w, h);
+          const t = now * 0.001;
+          for (const s of stars) {
+            s.y += s.vy;
+            s.x += s.vx;
+            if (s.y > h + 10) {
+              s.x = Math.random() * w;
+              s.y = -6 - Math.random() * 30;
+              s.vy = 0.12 + Math.random() * 0.28;
+            }
+            if (s.x < -4) s.x = w + 4;
+            if (s.x > w + 4) s.x = -4;
+
+            const glow = 0.42 + s.twinkle * (0.5 + 0.5 * Math.sin(t * 0.9 + s.phase));
+            ctx.beginPath();
+            ctx.shadowBlur = 3 + s.r * 2;
+            ctx.shadowColor = `rgba(255, 255, 255, ${glow * 0.35})`;
+            ctx.fillStyle = `rgba(255, 255, 255, ${glow})`;
+            ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.shadowBlur = 0;
+          rafId = requestAnimationFrame(tick);
+        }
+
+        resize();
+        window.addEventListener("resize", resize);
+        rafId = requestAnimationFrame(tick);
+
+        window.addEventListener(
+          "pagehide",
+          () => {
+            if (rafId) cancelAnimationFrame(rafId);
+          },
+          { once: true }
+        );
+      })();
+
       /**
        * Demo local authentication storage
        * - users: { [email]: { name, age, country, passwordHash, createdAt } }
@@ -2040,6 +2140,40 @@
 
       function normalizeEmail(email) {
         return String(email || "").trim().toLowerCase();
+      }
+
+      const ZZZETOX_EMAIL_SUFFIX = "@zzzetox.com";
+      const ZZZETOX_EMAIL_HINT = 'Please register with "@zzzetox.com"';
+
+      function isZzzetoxEmail(email) {
+        const normalized = normalizeEmail(email);
+        return normalized.endsWith(ZZZETOX_EMAIL_SUFFIX) && normalized.length > ZZZETOX_EMAIL_SUFFIX.length;
+      }
+
+      function updateZzzetoxEmailHint(inputId, hintId) {
+        const raw = String($(inputId)?.value || "");
+        const hint = $(hintId);
+        if (!hint) return !raw.trim() || isZzzetoxEmail(raw);
+        if (!raw.trim()) {
+          hint.textContent = "";
+          return true;
+        }
+        const ok = isZzzetoxEmail(raw);
+        hint.textContent = ok ? "" : ZZZETOX_EMAIL_HINT;
+        return ok;
+      }
+
+      function installZzzetoxEmailValidation() {
+        for (const [inputId, hintId] of [
+          ["signupEmail", "signupEmailHint"],
+          ["loginEmail", "loginEmailHint"],
+        ]) {
+          const el = $(inputId);
+          if (!el) continue;
+          const sync = () => updateZzzetoxEmailHint(inputId, hintId);
+          el.addEventListener("input", sync);
+          el.addEventListener("blur", sync);
+        }
       }
 
       function isPrintableAsciiChar(ch) {
@@ -3500,6 +3634,10 @@
         const email = normalizeEmail($("loginEmail").value);
         const password = $("loginPassword").value;
         if (!email) return toast("danger", "Please enter your email.");
+        if (!isZzzetoxEmail(email)) {
+          updateZzzetoxEmailHint("loginEmail", "loginEmailHint");
+          return;
+        }
         if (!password || password.length < 8) return toast("danger", "Password must be at least 8 characters.");
 
         const users = loadUsers();
@@ -3535,6 +3673,10 @@
           );
         }
         if (!email) return toast("danger", "Please enter your email.");
+        if (!isZzzetoxEmail(email)) {
+          updateZzzetoxEmailHint("signupEmail", "signupEmailHint");
+          return;
+        }
         if (!password || password.length < 8) return toast("danger", "Password must be at least 8 characters.");
         if (password !== password2) return toast("danger", "Password confirmation does not match.");
         if (!country) {
@@ -3606,6 +3748,7 @@
 
       initCountryPicker();
       installAuthEnglishOnlyInputs();
+      installZzzetoxEmailValidation();
       clearSession();
       refreshSessionUI("auth");
       setButtonPriorityStyles();

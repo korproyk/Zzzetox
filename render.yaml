@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: sleep-app
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn sleep_app:app
