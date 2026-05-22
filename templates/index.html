@@ -715,67 +715,6 @@
       .toast[data-kind="ok"] { border-color: rgba(52, 211, 153, 0.35); }
       .toast[data-kind="danger"] { border-color: rgba(251, 113, 133, 0.35); }
 
-      .server-sync-banner {
-        position: fixed;
-        top: 12px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 180;
-        max-width: min(560px, calc(100vw - 24px));
-        padding: 8px 12px;
-        border-radius: 10px;
-        font-size: 12px;
-        line-height: 1.45;
-        text-align: center;
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
-      }
-
-      .server-sync-banner[hidden] {
-        display: none;
-      }
-
-      .server-sync-banner[data-state="ok"] {
-        background: rgba(20, 83, 45, 0.92);
-        border: 1px solid rgba(74, 222, 128, 0.35);
-        color: #bbf7d0;
-      }
-
-      .server-sync-banner[data-state="warn"] {
-        background: rgba(127, 29, 29, 0.92);
-        border: 1px solid rgba(251, 113, 133, 0.45);
-        color: #fecdd3;
-      }
-
-      .server-sync-banner[data-state="wait"] {
-        background: rgba(30, 41, 59, 0.92);
-        border: 1px solid rgba(148, 163, 184, 0.35);
-        color: rgba(226, 232, 240, 0.92);
-      }
-
-      .server-sync-banner-actions {
-        margin-top: 8px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        justify-content: center;
-      }
-
-      .server-sync-sync-btn {
-        appearance: none;
-        border: 1px solid rgba(147, 197, 253, 0.45);
-        background: rgba(59, 130, 246, 0.25);
-        color: #e0f2fe;
-        border-radius: 999px;
-        padding: 6px 12px;
-        font-size: 11px;
-        font-weight: 800;
-        cursor: pointer;
-      }
-
-      .server-sync-sync-btn:hover {
-        background: rgba(59, 130, 246, 0.38);
-      }
-
       .chip {
         font-size: 12px;
         color: rgba(255,255,255,0.80);
@@ -2084,12 +2023,6 @@
     </style>
   </head>
   <body>
-    <p id="serverSyncBanner" class="server-sync-banner" data-state="wait" hidden aria-live="polite">
-      <span id="serverSyncBannerText">Checking server…</span>
-      <span class="server-sync-banner-actions" id="serverSyncBannerActions" hidden>
-        <button type="button" class="server-sync-sync-btn" id="serverSyncUploadBtn">Save this device’s account to server</button>
-      </span>
-    </p>
     <canvas id="starfield" aria-hidden="true"></canvas>
     <div id="guestDisclaimerOverlay" class="guest-disclaimer" hidden inert aria-label="Guest mode notice">
       <section class="guest-disclaimer-panel" role="dialog" aria-modal="true" aria-labelledby="guestDisclaimerCopy">
@@ -3143,17 +3076,6 @@
         return { res, data };
       }
 
-      function setServerSyncBanner(state, message, { showUpload = false } = {}) {
-        const el = $("serverSyncBanner");
-        const textEl = $("serverSyncBannerText");
-        const actions = $("serverSyncBannerActions");
-        if (!el || !textEl) return;
-        el.dataset.state = state;
-        textEl.textContent = message;
-        if (actions) actions.hidden = !showUpload;
-        el.hidden = false;
-      }
-
       async function fetchEmailRegisteredOnServer(email) {
         try {
           const res = await fetch(
@@ -3187,55 +3109,6 @@
         });
         if (!res.ok || !data.ok) return null;
         return data;
-      }
-
-      function getLocalOnlyAccountEmails() {
-        const session = loadSession();
-        if (session && session.authToken) return [];
-        const users = loadUsers();
-        return Object.keys(users).filter((e) => e && e !== GUEST_SESSION_EMAIL);
-      }
-
-      async function promptLocalAccountCloudSync() {
-        const emails = getLocalOnlyAccountEmails();
-        if (!emails.length) return;
-        setServerSyncBanner(
-          "warn",
-          "This device has an account saved only here (not on the server yet). Log in once to upload it, or use the button below after entering your password on the login form.",
-          { showUpload: true }
-        );
-      }
-
-      async function checkAccountServer() {
-        const banner = $("serverSyncBanner");
-        if (!banner) return false;
-        if (window.location.protocol === "file:") {
-          setServerSyncBanner(
-            "warn",
-            "Opened as a file — accounts cannot sync. Use http://127.0.0.1:5000 or your Render URL."
-          );
-          return false;
-        }
-        setServerSyncBanner("wait", "Checking account server…");
-        try {
-          const res = await fetch("/api/health", { cache: "no-store" });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok || !data.ok || !data.serverAuth) {
-            setServerSyncBanner(
-              "warn",
-              "This site is not running the latest server (no /api/health). Redeploy sleep_app.py from GitHub, then try again."
-            );
-            return false;
-          }
-          setServerSyncBanner(
-            "ok",
-            `Account server connected — sign up / log in works on every device at this URL.`
-          );
-          return true;
-        } catch {
-          setServerSyncBanner("warn", SERVER_REQUIRED_MSG);
-          return false;
-        }
       }
 
       function mergeServerSleepBucket(email, serverBucket) {
@@ -5179,33 +5052,6 @@
       initCountryPicker();
       installAuthEnglishOnlyInputs();
       installZzzetoxEmailValidation();
-      checkAccountServer().then(() => promptLocalAccountCloudSync());
-
-      $("serverSyncUploadBtn")?.addEventListener("click", async () => {
-        const emails = getLocalOnlyAccountEmails();
-        if (!emails.length) {
-          return toast("danger", "No local-only account on this device.");
-        }
-        const email = normalizeEmail(emails[0]);
-        const password = window.prompt(`Enter password for ${email} to upload to server:`);
-        if (!password) return;
-        const passwordHash = await sha256Hex(password);
-        try {
-          const migrated = await tryMigrateLocalAccountToServer(email, passwordHash);
-          if (!migrated) {
-            return toast("danger", "Upload failed. Use Log in with your email and password instead.");
-          }
-          applyServerAuthSuccess(migrated.user, migrated.token, passwordHash, migrated.sleepBucket);
-          refreshSessionUI("tracker");
-          setButtonPriorityStyles();
-          renderSleepMeta();
-          setServerSyncBanner("ok", "Account uploaded to server. You can log in on other devices now.");
-          toast("ok", "Account saved on the server!");
-        } catch (err) {
-          toast("danger", err && err.message ? err.message : SERVER_REQUIRED_MSG);
-        }
-      });
-
       const bootSession = getCurrentSessionOrNull();
       if (bootSession && bootSession.email) {
         refreshSessionUI(resolveLoggedInPage("tracker"));
