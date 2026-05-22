@@ -360,8 +360,8 @@
         margin: 0 auto;
         max-width: 34ch;
         text-align: center;
-        font-size: clamp(15px, 3.8vmin, 18px);
-        line-height: 1.55;
+        font-size: clamp(30px, 7.6vmin, 36px);
+        line-height: 1.45;
         color: rgba(255, 255, 255, 0.92);
         letter-spacing: -0.01em;
       }
@@ -426,6 +426,19 @@
       .guest-device-notice-close:focus-visible {
         outline: 2px solid rgba(251, 146, 60, 0.75);
         outline-offset: 2px;
+      }
+
+      .guest-device-notice-countdown {
+        position: absolute;
+        top: clamp(14px, 3.2vw, 18px);
+        left: 0;
+        right: 0;
+        margin: 0;
+        text-align: center;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        color: rgba(253, 186, 116, 0.82);
       }
 
       @keyframes guest-device-notice-blink {
@@ -1597,6 +1610,7 @@
     </div>
     <div id="guestDeviceNoticeOverlay" class="guest-device-notice" hidden inert aria-label="Guest device storage notice">
       <section class="guest-device-notice-panel" role="alertdialog" aria-modal="true" aria-labelledby="guestDeviceNoticeMsg">
+        <p class="guest-device-notice-countdown" id="guestDeviceNoticeCountdown" aria-live="polite">Closes: 10s</p>
         <button type="button" class="guest-device-notice-close" id="guestDeviceNoticeCloseBtn" aria-label="Close notice">×</button>
         <p class="guest-device-notice-msg" id="guestDeviceNoticeMsg">The datas from this account is saved on this device only!</p>
       </section>
@@ -2635,7 +2649,7 @@
         document.title = isLogin ? "Sleep Challenge | Login" : "Sleep Challenge | Signup";
       }
 
-      let guestDeviceNoticeTimer = null;
+      let guestDeviceNoticeInterval = null;
 
       function hideGuestDisclaimer() {
         const overlay = $("guestDisclaimerOverlay");
@@ -2649,21 +2663,26 @@
         if (!overlay) return;
         overlay.hidden = true;
         overlay.setAttribute("inert", "");
-        if (guestDeviceNoticeTimer) {
-          window.clearTimeout(guestDeviceNoticeTimer);
-          guestDeviceNoticeTimer = null;
+        if (guestDeviceNoticeInterval) {
+          window.clearInterval(guestDeviceNoticeInterval);
+          guestDeviceNoticeInterval = null;
         }
       }
 
       function showGuestDeviceNotice() {
         const overlay = $("guestDeviceNoticeOverlay");
+        const countdownEl = $("guestDeviceNoticeCountdown");
         if (!overlay) return;
         hideGuestDeviceNotice();
+        let secondsLeft = 10;
+        if (countdownEl) countdownEl.textContent = `Closes: ${secondsLeft}s`;
         overlay.hidden = false;
         overlay.removeAttribute("inert");
-        guestDeviceNoticeTimer = window.setTimeout(() => {
-          hideGuestDeviceNotice();
-        }, 10000);
+        guestDeviceNoticeInterval = window.setInterval(() => {
+          secondsLeft -= 1;
+          if (countdownEl) countdownEl.textContent = `Closes: ${secondsLeft}s`;
+          if (secondsLeft <= 0) hideGuestDeviceNotice();
+        }, 1000);
       }
 
       function showGuestDisclaimer() {
@@ -2779,6 +2798,11 @@
           return;
         }
 
+        if (isGuestSession(session)) {
+          el.appendChild(document.createTextNode("Guest"));
+          return;
+        }
+
         const body = document.createElement("div");
         body.className = "session-chip-body";
 
@@ -2790,17 +2814,13 @@
         nameSpan.textContent = session.name || "Guest";
         identityLine.appendChild(nameSpan);
 
-        if (!isGuestSession(session)) {
-          const countryRaw = String(session.country || "").trim();
-          const { alpha2, displayName } = resolveCountryForFlag(countryRaw);
-          appendSessionFlagButton(identityLine, el, displayName, alpha2);
-        }
+        const countryRaw = String(session.country || "").trim();
+        const { alpha2, displayName } = resolveCountryForFlag(countryRaw);
+        appendSessionFlagButton(identityLine, el, displayName, alpha2);
 
         const emailLine = document.createElement("div");
         emailLine.className = "session-chip-line session-chip-line--email";
-        emailLine.textContent = isGuestSession(session)
-          ? "(Guest · saved on this device only)"
-          : `(${session.email})`;
+        emailLine.textContent = `(${session.email})`;
 
         body.append(identityLine, emailLine);
         el.appendChild(body);
