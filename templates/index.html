@@ -1759,16 +1759,13 @@
       }
 
       .sleep-metric-tip {
-        position: absolute;
-        top: calc(100% + 6px);
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 45;
+        position: fixed;
+        z-index: 300;
         display: flex;
         flex-direction: column;
         align-items: stretch;
-        width: min(520px, 94vw);
-        max-width: min(520px, 94vw);
+        width: min(560px, calc(100vw - 24px));
+        max-width: min(560px, calc(100vw - 24px));
         pointer-events: none;
         filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.55));
       }
@@ -4602,37 +4599,59 @@
 
       let sleepMetricTipTimer = null;
 
+      let sleepMetricTipEl = null;
+
+      function getSleepMetricTipEl() {
+        if (sleepMetricTipEl) return sleepMetricTipEl;
+        const tip = document.createElement("div");
+        tip.className = "sleep-metric-tip";
+        tip.hidden = true;
+        const arrow = document.createElement("span");
+        arrow.className = "sleep-metric-tip-arrow";
+        arrow.setAttribute("aria-hidden", "true");
+        const bubble = document.createElement("div");
+        bubble.className = "sleep-metric-tip-bubble";
+        tip.append(arrow, bubble);
+        document.body.appendChild(tip);
+        sleepMetricTipEl = tip;
+        return tip;
+      }
+
+      function positionSleepMetricTip(anchorBtn, tip) {
+        const rect = anchorBtn.getBoundingClientRect();
+        const w = Math.min(560, Math.max(280, window.innerWidth - 24));
+        const left = Math.max(12, (window.innerWidth - w) / 2);
+        tip.style.width = `${w}px`;
+        tip.style.maxWidth = `${w}px`;
+        tip.style.left = `${left}px`;
+        tip.hidden = false;
+        let top = rect.bottom + 8;
+        const tipH = tip.offsetHeight;
+        if (tipH && top + tipH > window.innerHeight - 12) {
+          top = Math.max(12, rect.top - tipH - 8);
+        }
+        tip.style.top = `${top}px`;
+      }
+
       function hideSleepMetricTip() {
         if (sleepMetricTipTimer) {
           window.clearTimeout(sleepMetricTipTimer);
           sleepMetricTipTimer = null;
         }
-        document.querySelectorAll(".sleep-metric-tip").forEach((tip) => {
-          tip.hidden = true;
+        if (sleepMetricTipEl) sleepMetricTipEl.hidden = true;
+        document.querySelectorAll(".sleep-score-metric-line .sleep-metric-tip").forEach((tip) => {
+          tip.remove();
         });
       }
 
       function showSleepMetricTip(anchorBtn, kind) {
         hideSleepMetricTip();
-        const line = anchorBtn.closest(".sleep-score-metric-line");
-        if (!line) return;
-        let tip = line.querySelector(".sleep-metric-tip");
-        if (!tip) {
-          tip = document.createElement("div");
-          tip.className = "sleep-metric-tip";
-          tip.hidden = true;
-          const arrow = document.createElement("span");
-          arrow.className = "sleep-metric-tip-arrow";
-          arrow.setAttribute("aria-hidden", "true");
-          const bubble = document.createElement("div");
-          bubble.className = "sleep-metric-tip-bubble";
-          tip.append(arrow, bubble);
-          line.appendChild(tip);
-        }
+        const tip = getSleepMetricTipEl();
         const bubble = tip.querySelector(".sleep-metric-tip-bubble");
         if (!bubble) return;
         bubble.textContent = SLEEP_METRIC_TIP_TEXT[kind] || "";
-        tip.hidden = false;
+        positionSleepMetricTip(anchorBtn, tip);
+        window.requestAnimationFrame(() => positionSleepMetricTip(anchorBtn, tip));
         sleepMetricTipTimer = window.setTimeout(() => {
           tip.hidden = true;
           sleepMetricTipTimer = null;
