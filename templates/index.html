@@ -752,6 +752,30 @@
         color: rgba(226, 232, 240, 0.92);
       }
 
+      .server-sync-banner-actions {
+        margin-top: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+      }
+
+      .server-sync-sync-btn {
+        appearance: none;
+        border: 1px solid rgba(147, 197, 253, 0.45);
+        background: rgba(59, 130, 246, 0.25);
+        color: #e0f2fe;
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 11px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .server-sync-sync-btn:hover {
+        background: rgba(59, 130, 246, 0.38);
+      }
+
       .chip {
         font-size: 12px;
         color: rgba(255,255,255,0.80);
@@ -1943,7 +1967,10 @@
   </head>
   <body>
     <p id="serverSyncBanner" class="server-sync-banner" data-state="wait" hidden aria-live="polite">
-      Checking server…
+      <span id="serverSyncBannerText">Checking server…</span>
+      <span class="server-sync-banner-actions" id="serverSyncBannerActions" hidden>
+        <button type="button" class="server-sync-sync-btn" id="serverSyncUploadBtn">Save this device’s account to server</button>
+      </span>
     </p>
     <canvas id="starfield" aria-hidden="true"></canvas>
     <div id="guestDisclaimerOverlay" class="guest-disclaimer" hidden inert aria-label="Guest mode notice">
@@ -3001,12 +3028,67 @@
         return { res, data };
       }
 
-      function setServerSyncBanner(state, message) {
+      function setServerSyncBanner(state, message, { showUpload = false } = {}) {
         const el = $("serverSyncBanner");
-        if (!el) return;
+        const textEl = $("serverSyncBannerText");
+        const actions = $("serverSyncBannerActions");
+        if (!el || !textEl) return;
         el.dataset.state = state;
-        el.textContent = message;
+        textEl.textContent = message;
+        if (actions) actions.hidden = !showUpload;
         el.hidden = false;
+      }
+
+      async function fetchEmailRegisteredOnServer(email) {
+        try {
+          const res = await fetch(
+            `/api/auth/email-status?email=${encodeURIComponent(normalizeEmail(email))}`,
+            { cache: "no-store" }
+          );
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.ok) return null;
+          return Boolean(data.registered);
+        } catch {
+          return null;
+        }
+      }
+
+      async function tryMigrateLocalAccountToServer(email, passwordHash) {
+        const normalized = normalizeEmail(email);
+        const local = loadUsers()[normalized];
+        if (!local || local.passwordHash !== passwordHash) return null;
+        const { bucket } = getSleepBucket(normalized);
+        const { res, data } = await apiAuthFetch("/api/auth/migrate-local", {
+          method: "POST",
+          body: JSON.stringify({
+            email: normalized,
+            name: local.name,
+            age: local.age,
+            country: local.country || "",
+            passwordHash,
+            createdAt: local.createdAt,
+            sleepBucket: bucket,
+          }),
+        });
+        if (!res.ok || !data.ok) return null;
+        return data;
+      }
+
+      function getLocalOnlyAccountEmails() {
+        const session = loadSession();
+        if (session && session.authToken) return [];
+        const users = loadUsers();
+        return Object.keys(users).filter((e) => e && e !== GUEST_SESSION_EMAIL);
+      }
+
+      async function promptLocalAccountCloudSync() {
+        const emails = getLocalOnlyAccountEmails();
+        if (!emails.length) return;
+        setServerSyncBanner(
+          "warn",
+          "This device has an account saved only here (not on the server yet). Log in once to upload it, or use the button below after entering your password on the login form.",
+          { showUpload: true }
+        );
       }
 
       async function checkAccountServer() {
@@ -4715,13 +4797,22 @@
               if (mig.res.ok && mig.data.ok) loginPayload = mig.data;
             }
             if (!loginPayload) {
+              const migrated = await tryMigrateLocalAccountToServer(email, passwordHash);
+              if (migrated) {
+                loginPayload = migrated;
+              }
+            }
+            if (!loginPayload) {
+              const onServer = await fetchEmailRegisteredOnServer(email);
+              if (onServer === false) {
+                return toast(
+                  "danger",
+                  "This email is not on the server yet. On this page tap Sign Up and use the same email and password (works even if you registered on your phone before)."
+                );
+              }
               return toast(
                 "danger",
-                formatAuthApiError(
-                  res,
-                  data,
-                  "Account not found on the server. Sign up on this same URL, or log in once on the phone where you first registered to move that account to the server."
-                )
+                formatAuthApiError(res, data, "Wrong password, or account not on server. Try Sign Up here with the same email and password.")
               );
             }
           }
@@ -4777,6 +4868,7 @@
         const passwordHash = await sha256Hex(password);
         const countryToSave = isAnon ? COUNTRY_ANONYMOUS : resolvedCountry.displayName;
 
+        let signupData = null;
         try {
           const { res, data } = await apiAuthFetch("/api/auth/signup", {
             method: "POST",
@@ -4792,7 +4884,8 @@
           if (!res.ok || !data.ok) {
             return toast("danger", formatAuthApiError(res, data, "Sign up failed. Please try again."));
           }
-          applyServerAuthSuccess(data.user, data.token, passwordHash, null);
+          signupData = data;
+          applyServerAuthSuccess(data.user, data.token, passwordHash, data.sleepBucket || null);
         } catch (err) {
           return toast("danger", err && err.message ? err.message : SERVER_REQUIRED_MSG);
         }
@@ -4800,7 +4893,13 @@
         refreshSessionUI("tracker");
         setButtonPriorityStyles();
         renderSleepMeta();
-        toast("ok", `${name}, welcome! Account saved on the server — use the same URL on other devices.`);
+        const wasExisting = Boolean(signupData && signupData.existingAccount);
+        toast(
+          "ok",
+          wasExisting
+            ? `${name}, logged in! (account was already on the server)`
+            : `${name}, welcome! Account saved on the server — log in on other devices with the same email and password.`
+        );
       });
 
       $("bedtimeBtn").addEventListener("click", () => handleTwoStepClick("bedtime", startBedtime));
@@ -4839,7 +4938,32 @@
       initCountryPicker();
       installAuthEnglishOnlyInputs();
       installZzzetoxEmailValidation();
-      checkAccountServer();
+      checkAccountServer().then(() => promptLocalAccountCloudSync());
+
+      $("serverSyncUploadBtn")?.addEventListener("click", async () => {
+        const emails = getLocalOnlyAccountEmails();
+        if (!emails.length) {
+          return toast("danger", "No local-only account on this device.");
+        }
+        const email = normalizeEmail(emails[0]);
+        const password = window.prompt(`Enter password for ${email} to upload to server:`);
+        if (!password) return;
+        const passwordHash = await sha256Hex(password);
+        try {
+          const migrated = await tryMigrateLocalAccountToServer(email, passwordHash);
+          if (!migrated) {
+            return toast("danger", "Upload failed. Use Log in with your email and password instead.");
+          }
+          applyServerAuthSuccess(migrated.user, migrated.token, passwordHash, migrated.sleepBucket);
+          refreshSessionUI("tracker");
+          setButtonPriorityStyles();
+          renderSleepMeta();
+          setServerSyncBanner("ok", "Account uploaded to server. You can log in on other devices now.");
+          toast("ok", "Account saved on the server!");
+        } catch (err) {
+          toast("danger", err && err.message ? err.message : SERVER_REQUIRED_MSG);
+        }
+      });
 
       const bootSession = getCurrentSessionOrNull();
       if (bootSession && bootSession.email) {

@@ -156,6 +156,24 @@ def index():
     )
 
 
+@app.after_request
+def _no_cache_html(res):
+    if request.path == "/" or (res.content_type and "text/html" in res.content_type):
+        res.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        res.headers["Pragma"] = "no-cache"
+    return res
+
+
+@app.route("/api/auth/email-status", methods=["GET"])
+def api_auth_email_status():
+    """Check whether an email is registered on the server (for clearer login errors)."""
+    email = _normalize_email_api(request.args.get("email", ""))
+    if not email:
+        return jsonify({"ok": False, "error": "Email required."}), 400
+    store = get_account_store()
+    return jsonify({"ok": True, "email": email, "registered": store.get_user(email) is not None})
+
+
 @app.route("/api/health", methods=["GET"])
 def api_health():
     """Frontend uses this to verify server-side accounts are available."""
@@ -236,6 +254,29 @@ def api_auth_signup():
 
     try:
         store = get_account_store()
+        existing = store.get_user(email)
+        if existing:
+            user = store.verify_login(email, password_hash)
+            if not user:
+                return jsonify(
+                    {
+                        "ok": False,
+                        "error": "This email is already registered with a different password. Try Log in, or use Forgot flow via Sign up on the device where you registered.",
+                    }
+                ), 409
+            token = store.issue_token(email)
+            bucket = store.get_sleep_bucket(email)
+            logger.info("POST /api/auth/signup email=%r existing account — logged in", email)
+            return jsonify(
+                {
+                    "ok": True,
+                    "user": user,
+                    "token": token,
+                    "sleepBucket": bucket,
+                    "existingAccount": True,
+                }
+            )
+
         user = store.create_user(
             email=email,
             name=name,
@@ -253,7 +294,7 @@ def api_auth_signup():
         return _auth_error_response(exc, "signup")
 
     logger.info("POST /api/auth/signup email=%r db=%s", email, store.db_path)
-    return jsonify({"ok": True, "user": user, "token": token})
+    return jsonify({"ok": True, "user": user, "token": token, "existingAccount": False})
 
 
 @app.route("/api/auth/login", methods=["POST"])
