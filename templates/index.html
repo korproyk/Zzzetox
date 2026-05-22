@@ -715,6 +715,43 @@
       .toast[data-kind="ok"] { border-color: rgba(52, 211, 153, 0.35); }
       .toast[data-kind="danger"] { border-color: rgba(251, 113, 133, 0.35); }
 
+      .server-sync-banner {
+        position: fixed;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 180;
+        max-width: min(560px, calc(100vw - 24px));
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-size: 12px;
+        line-height: 1.45;
+        text-align: center;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+      }
+
+      .server-sync-banner[hidden] {
+        display: none;
+      }
+
+      .server-sync-banner[data-state="ok"] {
+        background: rgba(20, 83, 45, 0.92);
+        border: 1px solid rgba(74, 222, 128, 0.35);
+        color: #bbf7d0;
+      }
+
+      .server-sync-banner[data-state="warn"] {
+        background: rgba(127, 29, 29, 0.92);
+        border: 1px solid rgba(251, 113, 133, 0.45);
+        color: #fecdd3;
+      }
+
+      .server-sync-banner[data-state="wait"] {
+        background: rgba(30, 41, 59, 0.92);
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        color: rgba(226, 232, 240, 0.92);
+      }
+
       .chip {
         font-size: 12px;
         color: rgba(255,255,255,0.80);
@@ -1905,6 +1942,9 @@
     </style>
   </head>
   <body>
+    <p id="serverSyncBanner" class="server-sync-banner" data-state="wait" hidden aria-live="polite">
+      Checking server…
+    </p>
     <canvas id="starfield" aria-hidden="true"></canvas>
     <div id="guestDisclaimerOverlay" class="guest-disclaimer" hidden inert aria-label="Guest mode notice">
       <section class="guest-disclaimer-panel" role="dialog" aria-modal="true" aria-labelledby="guestDisclaimerCopy">
@@ -2932,6 +2972,15 @@
         saveUsers(users);
       }
 
+      const SERVER_REQUIRED_MSG =
+        "Cannot reach the account server. Open this app only through your deployed URL (e.g. https://your-app.onrender.com) or http://127.0.0.1:5000 — not by opening an HTML file.";
+
+      function formatAuthApiError(res, data, fallback) {
+        const detail = data && data.error ? String(data.error) : fallback;
+        if (res && res.status) return `${detail} (HTTP ${res.status})`;
+        return detail;
+      }
+
       async function apiAuthFetch(path, options = {}) {
         const session = loadSession();
         const headers = {
@@ -2941,9 +2990,55 @@
         if (session && session.authToken) {
           headers.Authorization = `Bearer ${session.authToken}`;
         }
-        const res = await fetch(path, { ...options, headers });
+        let res;
+        try {
+          res = await fetch(path, { ...options, headers });
+        } catch (err) {
+          const msg = err && err.message ? err.message : "network error";
+          throw new Error(`${SERVER_REQUIRED_MSG} (${msg})`);
+        }
         const data = await res.json().catch(() => ({}));
         return { res, data };
+      }
+
+      function setServerSyncBanner(state, message) {
+        const el = $("serverSyncBanner");
+        if (!el) return;
+        el.dataset.state = state;
+        el.textContent = message;
+        el.hidden = false;
+      }
+
+      async function checkAccountServer() {
+        const banner = $("serverSyncBanner");
+        if (!banner) return false;
+        if (window.location.protocol === "file:") {
+          setServerSyncBanner(
+            "warn",
+            "Opened as a file — accounts cannot sync. Use http://127.0.0.1:5000 or your Render URL."
+          );
+          return false;
+        }
+        setServerSyncBanner("wait", "Checking account server…");
+        try {
+          const res = await fetch("/api/health", { cache: "no-store" });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.ok || !data.serverAuth) {
+            setServerSyncBanner(
+              "warn",
+              "This site is not running the latest server (no /api/health). Redeploy sleep_app.py from GitHub, then try again."
+            );
+            return false;
+          }
+          setServerSyncBanner(
+            "ok",
+            `Account server connected — sign up / log in works on every device at this URL.`
+          );
+          return true;
+        } catch {
+          setServerSyncBanner("warn", SERVER_REQUIRED_MSG);
+          return false;
+        }
       }
 
       function mergeServerSleepBucket(email, serverBucket) {
@@ -4622,21 +4717,16 @@
             if (!loginPayload) {
               return toast(
                 "danger",
-                data.error ||
-                  "Account not found on the server. Use the same app URL on every device, sign up here, or log in once on the phone where you first registered."
+                formatAuthApiError(
+                  res,
+                  data,
+                  "Account not found on the server. Sign up on this same URL, or log in once on the phone where you first registered to move that account to the server."
+                )
               );
             }
           }
-        } catch {
-          const user = loadUsers()[email];
-          if (!user || user.passwordHash !== passwordHash) {
-            return toast("danger", "Cannot reach server. Check your connection and try again.");
-          }
-          saveSession({ email, name: user.name, country: user.country || "", age: user.age ?? null, loggedInAt: nowISO() });
-          refreshSessionUI("tracker");
-          setButtonPriorityStyles();
-          renderSleepMeta();
-          return toast("ok", `${user.name}, welcome! (offline — this device only)`);
+        } catch (err) {
+          return toast("danger", err && err.message ? err.message : SERVER_REQUIRED_MSG);
         }
 
         applyServerAuthSuccess(loginPayload.user, loginPayload.token, passwordHash, loginPayload.sleepBucket);
@@ -4700,25 +4790,11 @@
             }),
           });
           if (!res.ok || !data.ok) {
-            return toast("danger", data.error || "Sign up failed. Please try again.");
+            return toast("danger", formatAuthApiError(res, data, "Sign up failed. Please try again."));
           }
           applyServerAuthSuccess(data.user, data.token, passwordHash, null);
-        } catch {
-          const users = loadUsers();
-          if (users[email]) return toast("danger", "This email is already registered. Please log in.");
-          users[email] = {
-            name,
-            age: age.value,
-            country: countryToSave,
-            passwordHash,
-            createdAt: nowISO(),
-          };
-          saveUsers(users);
-          saveSession({ email, name, country: countryToSave || "", age: age.value, loggedInAt: nowISO() });
-          refreshSessionUI("tracker");
-          setButtonPriorityStyles();
-          renderSleepMeta();
-          return toast("ok", `${name}, welcome! (offline — this device only)`);
+        } catch (err) {
+          return toast("danger", err && err.message ? err.message : SERVER_REQUIRED_MSG);
         }
 
         refreshSessionUI("tracker");
@@ -4763,6 +4839,7 @@
       initCountryPicker();
       installAuthEnglishOnlyInputs();
       installZzzetoxEmailValidation();
+      checkAccountServer();
 
       const bootSession = getCurrentSessionOrNull();
       if (bootSession && bootSession.email) {

@@ -16,6 +16,27 @@ DEFAULT_DATA_DIR = ROOT / "data"
 TOKEN_TTL_DAYS = 90
 
 
+def resolve_data_dir() -> Path:
+    """Pick a writable directory for accounts.db (Render / local)."""
+    candidates: list[Path] = []
+    env_dir = os.environ.get("SLEEP_APP_DATA_DIR", "").strip()
+    if env_dir:
+        candidates.append(Path(env_dir))
+    candidates.extend([ROOT / "data", Path("/var/data"), Path("/tmp/sleep_app_data")])
+    for candidate in candidates:
+        try:
+            candidate.mkdir(parents=True, exist_ok=True)
+            probe = candidate / ".write_probe"
+            probe.write_text("ok", encoding="utf-8")
+            probe.unlink(missing_ok=True)
+            return candidate
+        except OSError:
+            continue
+    fallback = ROOT / "data"
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback
+
+
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
@@ -26,16 +47,28 @@ def _normalize_email(email: str) -> str:
 
 class AccountStore:
     def __init__(self, data_dir: Path | None = None) -> None:
-        base = data_dir or Path(os.environ.get("SLEEP_APP_DATA_DIR", str(DEFAULT_DATA_DIR)))
+        base = data_dir or resolve_data_dir()
         base.mkdir(parents=True, exist_ok=True)
+        self.data_dir = base
         self.db_path = base / "accounts.db"
         self._lock = threading.Lock()
         self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path, timeout=30)
+        conn = sqlite3.connect(str(self.db_path), timeout=30, check_same_thread=False)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=30000")
         return conn
+
+    def count_users(self) -> int:
+        with self._lock:
+            conn = self._connect()
+            try:
+                row = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()
+                return int(row["c"]) if row else 0
+            finally:
+                conn.close()
 
     def _init_db(self) -> None:
         with self._lock:

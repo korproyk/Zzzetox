@@ -156,6 +156,24 @@ def index():
     )
 
 
+@app.route("/api/health", methods=["GET"])
+def api_health():
+    """Frontend uses this to verify server-side accounts are available."""
+    try:
+        store = get_account_store()
+        return jsonify(
+            {
+                "ok": True,
+                "serverAuth": True,
+                "userCount": store.count_users(),
+                "dbPath": str(store.db_path),
+            }
+        )
+    except Exception as exc:
+        logger.exception("GET /api/health failed")
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
 @app.route("/api/validate-nickname", methods=["POST"])
 def api_validate_nickname():
     """Final nickname check (same rules as client)."""
@@ -188,6 +206,11 @@ def _require_auth_email() -> str | tuple[dict, int]:
     return email
 
 
+def _auth_error_response(exc: Exception, action: str):
+    logger.exception("Auth %s failed", action)
+    return jsonify({"ok": False, "error": f"Server storage error during {action}. Try again."}), 500
+
+
 @app.route("/api/auth/signup", methods=["POST"])
 def api_auth_signup():
     """Register account on server (syncs across devices)."""
@@ -211,8 +234,8 @@ def api_auth_signup():
     if err:
         return jsonify({"ok": False, "error": err}), 400
 
-    store = get_account_store()
     try:
+        store = get_account_store()
         user = store.create_user(
             email=email,
             name=name,
@@ -221,13 +244,15 @@ def api_auth_signup():
             password_hash=password_hash,
             created_at=body.get("createdAt"),
         )
+        token = store.issue_token(email)
     except ValueError as exc:
         if str(exc) == "email_already_registered":
             return jsonify({"ok": False, "error": "This email is already registered. Please log in."}), 409
-        raise
+        return _auth_error_response(exc, "signup")
+    except Exception as exc:
+        return _auth_error_response(exc, "signup")
 
-    token = store.issue_token(email)
-    logger.info("POST /api/auth/signup email=%r", email)
+    logger.info("POST /api/auth/signup email=%r db=%s", email, store.db_path)
     return jsonify({"ok": True, "user": user, "token": token})
 
 
@@ -241,14 +266,17 @@ def api_auth_login():
     if not email or not password_hash:
         return jsonify({"ok": False, "error": "Email and password are required."}), 400
 
-    store = get_account_store()
-    user = store.verify_login(email, password_hash)
-    if not user:
-        return jsonify({"ok": False, "error": "Account not found or incorrect password."}), 401
+    try:
+        store = get_account_store()
+        user = store.verify_login(email, password_hash)
+        if not user:
+            return jsonify({"ok": False, "error": "Account not found or incorrect password."}), 401
+        token = store.issue_token(email)
+        bucket = store.get_sleep_bucket(email)
+    except Exception as exc:
+        return _auth_error_response(exc, "login")
 
-    token = store.issue_token(email)
-    bucket = store.get_sleep_bucket(email)
-    logger.info("POST /api/auth/login email=%r", email)
+    logger.info("POST /api/auth/login email=%r db=%s", email, store.db_path)
     return jsonify({"ok": True, "user": user, "token": token, "sleepBucket": bucket})
 
 
@@ -905,6 +933,17 @@ def ai_feedback():
         len(text or ""),
     )
     return jsonify({"ok": True, "text": text, "source": source})
+
+
+@app.before_request
+def _log_auth_routes_once():
+    if not getattr(app, "_account_db_logged", False):
+        try:
+            store = get_account_store()
+            logger.info("Account database ready: %s (users=%s)", store.db_path, store.count_users())
+        except Exception:
+            logger.exception("Account database failed to initialize")
+        app._account_db_logged = True
 
 
 if __name__ == "__main__":
