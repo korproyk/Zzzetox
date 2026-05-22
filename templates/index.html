@@ -1173,9 +1173,13 @@
 
       .ai-sleep-compare {
         margin: 6px 0 0;
-        font-size: 12px;
+        font-size: clamp(10px, 2.6vw, 12px);
         color: rgba(255, 255, 255, 0.62);
-        line-height: 1.4;
+        line-height: 1.3;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
       }
 
       .ai-sleep-goal-col {
@@ -1332,28 +1336,35 @@
 
       .ai-tip-card {
         display: flex;
+        flex-direction: column;
         align-items: flex-start;
-        gap: 10px;
-        padding: 10px 12px;
+        gap: 6px;
+        padding: 8px 12px;
       }
 
-      .ai-tip-icon {
-        width: 28px;
-        height: 28px;
-        border-radius: 999px;
-        display: grid;
-        place-items: center;
-        font-size: 14px;
-        background: rgba(59, 130, 246, 0.2);
-        border: 1px solid rgba(96, 165, 250, 0.35);
-        flex-shrink: 0;
-      }
-
-      .ai-tip-label {
-        margin: 0 0 2px;
+      .ai-tip-toggle {
+        appearance: none;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
         font-size: 11px;
         font-weight: 800;
         color: rgba(147, 197, 253, 0.95);
+        text-decoration: underline;
+        text-underline-offset: 0.14em;
+        cursor: pointer;
+        line-height: 1.2;
+      }
+
+      .ai-tip-toggle:hover {
+        color: #bfdbfe;
+      }
+
+      .ai-tip-toggle:focus-visible {
+        outline: 2px solid rgba(96, 165, 250, 0.55);
+        outline-offset: 3px;
+        border-radius: 4px;
       }
 
       .ai-tip-text {
@@ -1362,6 +1373,11 @@
         color: rgba(255, 255, 255, 0.62);
         line-height: 1.4;
         text-align: left;
+        max-width: 42ch;
+      }
+
+      .ai-tip-text[hidden] {
+        display: none;
       }
 
       .next-feedback-btn {
@@ -2150,15 +2166,12 @@
               </div>
             </div>
             <div class="ai-day-track" id="aiDayTrack" aria-label="7-day AI feedback progress"></div>
-            <p class="ai-progress-status" id="aiProgressStatus">✨ 7 days left! Keep logging sleep to unlock AI feedback.</p>
+            <p class="ai-progress-status" id="aiProgressStatus">✨ 7 days left! Keep sleeping for AI feedback!</p>
           </div>
 
           <div class="ai-daily-card ai-tip-card">
-            <div class="ai-tip-icon" aria-hidden="true">💡</div>
-            <div>
-              <p class="ai-tip-label">Tip</p>
-              <p class="ai-tip-text">Try to keep a consistent sleep schedule for more accurate feedback!</p>
-            </div>
+            <button type="button" class="ai-tip-toggle" id="aiTipToggle" aria-expanded="false" aria-controls="aiTipText">Tip</button>
+            <p class="ai-tip-text" id="aiTipText" hidden>Try to keep a consistent sleep schedule for more accurate feedback!</p>
           </div>
         </div>
         <button type="button" class="return-sleep-btn" id="returnSleepBtn">Return to sleep</button>
@@ -3453,6 +3466,21 @@
         return (Math.abs(ms) / (1000 * 60 * 60)).toFixed(1);
       }
 
+      /** Treat tiny day-to-day differences as "same sleep" (seconds-level noise). */
+      const SAME_SLEEP_COMPARE_THRESHOLD_MS = 30 * 1000;
+
+      function getSleepCompareMessage(latest, prev) {
+        const diff = latest.durationMs - prev.durationMs;
+        if (Math.abs(diff) <= SAME_SLEEP_COMPARE_THRESHOLD_MS) {
+          return "You slept the same amount as yesterday!";
+        }
+        const n = hoursDiffText(diff);
+        if (diff > 0) {
+          return `You slept ${n} hours more than yesterday!`;
+        }
+        return `You slept ${n} hours less than yesterday...`;
+      }
+
       function renderAiDayTrack(completedDays) {
         const track = $("aiDayTrack");
         if (!track) return;
@@ -3517,15 +3545,7 @@
         }
 
         const prev = list[list.length - 2];
-        const diff = latest.durationMs - prev.durationMs;
-        const n = hoursDiffText(diff);
-        if (diff > 0) {
-          compareEl.textContent = `You slept ${n} hours more than yesterday!`;
-        } else if (diff < 0) {
-          compareEl.textContent = `You slept ${n} hours less than yesterday...`;
-        } else {
-          compareEl.textContent = "You slept the same amount as yesterday.";
-        }
+        if (compareEl) compareEl.textContent = getSleepCompareMessage(latest, prev);
       }
 
       function renderAiProgressPage() {
@@ -3553,7 +3573,7 @@
           if (cardTitle) cardTitle.textContent = "AI feedbacks available soon!";
           if (cardSub) cardSub.textContent = "Complete all 7 days to unlock AI feedbacks. You're almost there!";
           if (statusEl) {
-            statusEl.textContent = `✨ ${daysLeft} days left! Keep logging sleep to unlock AI feedback.`;
+            statusEl.textContent = `✨ ${daysLeft} days left! Keep sleeping for AI feedback!`;
           }
         }
 
@@ -3744,6 +3764,24 @@
       });
       $("guestDeviceNoticeCloseBtn").addEventListener("click", () => {
         hideGuestDeviceNotice();
+      });
+
+      let aiTipRevealTimer = null;
+      $("aiTipToggle").addEventListener("click", () => {
+        const tipText = $("aiTipText");
+        const tipBtn = $("aiTipToggle");
+        if (!tipText || !tipBtn) return;
+        if (aiTipRevealTimer) {
+          window.clearTimeout(aiTipRevealTimer);
+          aiTipRevealTimer = null;
+        }
+        tipText.hidden = false;
+        tipBtn.setAttribute("aria-expanded", "true");
+        aiTipRevealTimer = window.setTimeout(() => {
+          tipText.hidden = true;
+          tipBtn.setAttribute("aria-expanded", "false");
+          aiTipRevealTimer = null;
+        }, 7500);
       });
 
       $("goalSaveBtn").addEventListener("click", () => {
