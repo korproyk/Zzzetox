@@ -1701,6 +1701,102 @@
         line-height: 1.55;
         color: rgba(255, 255, 255, 0.72);
         max-width: 42ch;
+        width: 100%;
+      }
+
+      .sleep-score-detail-block {
+        display: grid;
+        gap: 8px;
+        justify-items: center;
+        text-align: center;
+        width: 100%;
+      }
+
+      .sleep-score-line {
+        margin: 0;
+        font-size: clamp(14px, 2.4vw, 17px);
+        font-weight: 700;
+        line-height: 1.45;
+        color: rgba(255, 255, 255, 0.88);
+      }
+
+      .sleep-score-metric-line {
+        position: relative;
+      }
+
+      .sleep-metric-term {
+        appearance: none;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: #5c97ff;
+        font: inherit;
+        font-weight: inherit;
+        text-decoration: underline;
+        text-underline-offset: 0.12em;
+        cursor: pointer;
+      }
+
+      .sleep-metric-term:hover {
+        color: #7eb3ff;
+      }
+
+      .sleep-metric-term:focus-visible {
+        outline: 2px solid rgba(92, 151, 255, 0.55);
+        outline-offset: 2px;
+        border-radius: 3px;
+      }
+
+      .sleep-metric-tip {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 45;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        pointer-events: none;
+        filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.55));
+        max-width: min(300px, 88vw);
+      }
+
+      .sleep-metric-tip[hidden] {
+        display: none !important;
+      }
+
+      .sleep-metric-tip-arrow {
+        width: 0;
+        height: 0;
+        border-left: 8px solid transparent;
+        border-right: 8px solid transparent;
+        border-bottom: 8px solid #0a0a0a;
+      }
+
+      .sleep-metric-tip-bubble {
+        margin-top: -1px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        background: #0a0a0a;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: rgba(255, 255, 255, 0.92);
+        font-size: 11px;
+        font-weight: 500;
+        line-height: 1.45;
+        text-align: left;
+        white-space: pre-line;
+      }
+
+      .sleep-score-age-note {
+        color: rgba(255, 255, 255, 0.62);
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .sleep-score-hero--structured .sleep-score-value,
+      .sleep-score-hero--structured .sleep-score-level {
+        display: none !important;
       }
 
       .sleep-score-empty {
@@ -2319,7 +2415,7 @@
             />
             <p class="sleep-score-value" id="sleepScoreValue">—</p>
             <p class="sleep-score-level" id="sleepScoreLevel">Lv.—</p>
-            <p class="sleep-score-detail" id="sleepScoreDetail"></p>
+            <div class="sleep-score-detail" id="sleepScoreDetail"></div>
           </div>
         </div>
         <button type="button" class="return-sleep-btn" id="scoreReturnSleepBtn">Return to sleep</button>
@@ -4484,16 +4580,112 @@
         return Math.round((bedtimeScore + durationScore) / 2);
       }
 
-      function zeroSleepScoreDetailNote(bucket, durLo) {
-        const avgH = averageSleepHoursLastEntries(bucket, 7);
-        const lo = Number(durLo) || 7;
-        if (avgH != null && !isNearZeroSleepHours(avgH) && avgH >= lo * 0.65) {
-          return " Last night shows 0 h — likely a missed tap; score uses your usual sleep (1–5 range).";
+      const SLEEP_METRIC_TIP_TEXT = {
+        point:
+          "Sleep Point: 0 ~ 100 points\nThe point is calculated by how different is  your sleep time and the recommended. The more it is, the lower your points are.",
+        level:
+          "Sleep Level: 1 ~ 5 levels\nThe level is calculated by your points.\n- 00 ~ 19 = Lv. 1\n- 20 ~ 39 = Lv. 2\n- 40 ~ 59 = Lv. 3\n- 60 ~ 79 = Lv. 4\n- 80 ~ 100 = Lv. 5",
+      };
+
+      let sleepMetricTipTimer = null;
+
+      function hideSleepMetricTip() {
+        if (sleepMetricTipTimer) {
+          window.clearTimeout(sleepMetricTipTimer);
+          sleepMetricTipTimer = null;
         }
-        if (avgH != null && isNearZeroSleepHours(avgH)) {
-          return " Near-zero sleep is your recent pattern; score uses the 0–5 range (0–1).";
+        document.querySelectorAll(".sleep-metric-tip").forEach((tip) => {
+          tip.hidden = true;
+        });
+      }
+
+      function showSleepMetricTip(anchorBtn, kind) {
+        hideSleepMetricTip();
+        const line = anchorBtn.closest(".sleep-score-metric-line");
+        if (!line) return;
+        let tip = line.querySelector(".sleep-metric-tip");
+        if (!tip) {
+          tip = document.createElement("div");
+          tip.className = "sleep-metric-tip";
+          tip.hidden = true;
+          const arrow = document.createElement("span");
+          arrow.className = "sleep-metric-tip-arrow";
+          arrow.setAttribute("aria-hidden", "true");
+          const bubble = document.createElement("div");
+          bubble.className = "sleep-metric-tip-bubble";
+          tip.append(arrow, bubble);
+          line.appendChild(tip);
         }
-        return " Last night shows 0 h; score uses the 0–5 range from your recent average.";
+        const bubble = tip.querySelector(".sleep-metric-tip-bubble");
+        if (!bubble) return;
+        bubble.textContent = SLEEP_METRIC_TIP_TEXT[kind] || "";
+        tip.hidden = false;
+        sleepMetricTipTimer = window.setTimeout(() => {
+          tip.hidden = true;
+          sleepMetricTipTimer = null;
+        }, 5000);
+      }
+
+      function createSleepMetricTermButton(label, kind) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "sleep-metric-term";
+        btn.textContent = label;
+        btn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          showSleepMetricTip(btn, kind);
+        });
+        return btn;
+      }
+
+      function formatLastWeekHoursLine(hoursSlept) {
+        if (isNearZeroSleepHours(hoursSlept)) return "Last week: 0 h recorded.";
+        return `Last week: ${hoursSlept.toFixed(1)} h recorded.`;
+      }
+
+      function sleepScoreAgeBaselineNote(age) {
+        if (age == null || !Number.isFinite(Number(age))) {
+          return "Age not set - use 16 year baseline";
+        }
+        return "";
+      }
+
+      function renderSleepScoreDetailStructured({ hoursSlept, score, level, age }) {
+        const detEl = $("sleepScoreDetail");
+        const hero = $("sleepScoreHero");
+        if (!detEl) return;
+        hideSleepMetricTip();
+        detEl.replaceChildren();
+        detEl.classList.remove("sleep-score-empty");
+        if (hero) hero.classList.add("sleep-score-hero--structured");
+
+        const block = document.createElement("div");
+        block.className = "sleep-score-detail-block";
+
+        const weekLine = document.createElement("p");
+        weekLine.className = "sleep-score-line";
+        weekLine.textContent = formatLastWeekHoursLine(hoursSlept);
+        block.appendChild(weekLine);
+
+        const pointLine = document.createElement("p");
+        pointLine.className = "sleep-score-line sleep-score-metric-line";
+        pointLine.append("Your ", createSleepMetricTermButton("Sleep Point", "point"), `: ${score}`);
+        block.appendChild(pointLine);
+
+        const levelLine = document.createElement("p");
+        levelLine.className = "sleep-score-line sleep-score-metric-line";
+        levelLine.append("Your ", createSleepMetricTermButton("Sleep Level", "level"), `: ${level}`);
+        block.appendChild(levelLine);
+
+        const ageNote = sleepScoreAgeBaselineNote(age);
+        if (ageNote) {
+          const ageLine = document.createElement("p");
+          ageLine.className = "sleep-score-line sleep-score-age-note";
+          ageLine.textContent = ageNote;
+          block.appendChild(ageLine);
+        }
+
+        detEl.appendChild(block);
       }
 
       function buildCountryRankings() {
@@ -4615,61 +4807,72 @@
         const valEl = $("sleepScoreValue");
         const lvlEl = $("sleepScoreLevel");
         const detEl = $("sleepScoreDetail");
-        if (!session) {
-          valEl.textContent = "—";
-          lvlEl.textContent = "Lv.—";
-          detEl.textContent = "Log in to see your sleep score.";
-          detEl.classList.add("sleep-score-empty");
+        const hero = $("sleepScoreHero");
+        const showPlainDetail = (msg) => {
+          hideSleepMetricTip();
+          if (hero) hero.classList.remove("sleep-score-hero--structured");
+          if (valEl) {
+            valEl.hidden = false;
+            valEl.textContent = "—";
+          }
+          if (lvlEl) {
+            lvlEl.hidden = false;
+            lvlEl.textContent = "Lv.—";
+          }
+          if (detEl) {
+            detEl.replaceChildren();
+            detEl.textContent = msg;
+            detEl.classList.add("sleep-score-empty");
+          }
           setSleepLevelImage(null);
+        };
+
+        if (!session) {
+          showPlainDetail("Log in to see your sleep score.");
           return;
         }
         const users = loadUsers();
         const user = users[session.email] || {};
-        const age = user.age;
+        const age = user.age != null ? user.age : session.age;
         const { bucket } = getSleepBucket(session.email);
         const list = bucket.history || [];
         const latest = list.length ? list[list.length - 1] : null;
         if (!latest || !latest.bedAt) {
-          valEl.textContent = "—";
-          lvlEl.textContent = "Lv.—";
-          detEl.textContent = "Record at least one sleep session (bedtime → wakeup) to get a score.";
-          detEl.classList.add("sleep-score-empty");
-          setSleepLevelImage(null);
+          showPlainDetail("Record at least one sleep session (bedtime → wakeup) to get a score.");
           return;
         }
-        detEl.classList.remove("sleep-score-empty");
         const actualH = bedAtToSleepHours(latest.bedAt);
-        const recH = recommendedBedtimeSleepHours(age);
         if (actualH == null) {
-          valEl.textContent = "—";
-          lvlEl.textContent = "Lv.—";
-          detEl.textContent = "Could not read your last bedtime.";
-          detEl.classList.add("sleep-score-empty");
-          setSleepLevelImage(null);
+          showPlainDetail("Could not read your last bedtime.");
           return;
         }
         const hoursSlept = Math.max(0, (Number(latest.durationMs) || 0) / (1000 * 60 * 60));
-        const [durLo, durHi] = recommendedSleepRangeHoursClient(age);
+        const [durLo] = recommendedSleepRangeHoursClient(age);
         const score = computeLatestSleepScore(session.email);
-        const lv = levelFromSleepScore(score);
-        valEl.textContent = String(score);
-        lvlEl.textContent = `Lv.${lv}`;
-        setSleepLevelImage(lv);
-        const ageNote =
-          age == null || !Number.isFinite(Number(age))
-            ? "Age not set — using the 16-year baseline for recommended bedtime."
-            : "";
-
-        if (isNearZeroSleepHours(hoursSlept)) {
-          detEl.textContent =
-            `Last night: 0 h recorded.${zeroSleepScoreDetailNote(bucket, durLo)}${ageNote ? " " + ageNote : ""}`;
+        if (score == null) {
+          showPlainDetail("Could not calculate sleep score.");
           return;
         }
 
-        const diffH = Math.abs(actualH - recH);
-        detEl.textContent =
-          `Score blends bedtime (vs ${formatSleepHourLabel(recH)}) and last night’s sleep length (~${hoursSlept.toFixed(1)} h vs about ${durLo.toFixed(0)}–${durHi.toFixed(0)} h for your age). ` +
-          `Bedtime difference about ${diffH.toFixed(1)} hours.${ageNote ? " " + ageNote : ""}`;
+        const displayPoint = score;
+        const displayLevel = isNearZeroSleepHours(hoursSlept) ? displayPoint : levelFromSleepScore(score);
+        const lvForImage = Math.max(1, Math.min(5, displayLevel || 1));
+
+        if (valEl) {
+          valEl.hidden = true;
+          valEl.textContent = String(displayPoint);
+        }
+        if (lvlEl) {
+          lvlEl.hidden = true;
+          lvlEl.textContent = `Lv.${lvForImage}`;
+        }
+        setSleepLevelImage(lvForImage);
+        renderSleepScoreDetailStructured({
+          hoursSlept,
+          score: displayPoint,
+          level: displayLevel,
+          age,
+        });
       }
 
       $("feedbackScoreNavBtn").addEventListener("click", () => {
@@ -4913,6 +5116,7 @@
         (e) => {
           if (e.target.closest(".country-flag-wrap")) return;
           hideAllCountryFlagTips();
+          if (!e.target.closest(".sleep-metric-term")) hideSleepMetricTip();
         },
         true
       );
