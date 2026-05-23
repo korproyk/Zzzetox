@@ -3,7 +3,20 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sleep Challenge | Login</title>
+    <title>Zzzetox</title>
+    <meta name="description" content="Don't become a Zzzombie. Adolescent Sleep Management Challenge App." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Zzzetox" />
+    <meta property="og:title" content="Zzzetox" />
+    <meta property="og:description" content="Don't become a Zzzombie." />
+    <meta property="og:url" content="{{ og_page_url }}" />
+    <meta property="og:image" content="{{ og_image_url }}" />
+    <meta property="og:image:width" content="1024" />
+    <meta property="og:image:height" content="561" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Zzzetox" />
+    <meta name="twitter:description" content="Don't become a Zzzombie." />
+    <meta name="twitter:image" content="{{ og_image_url }}" />
     <style>
       :root {
         --bg: #0b1220;
@@ -2575,12 +2588,12 @@
         </p>
       </section>
     </div>
-    <main class="app app-single auth-landing" id="authPage" aria-label="Sleep Challenge Login/Signup">
+    <main class="app app-single auth-landing" id="authPage" aria-label="Zzzetox Login/Signup">
       <section class="hero" aria-label="Introduction">
         <div class="brand">
           <div class="logo" aria-hidden="true">Z</div>
           <div>
-            <h1>Zzzetox...</h1>
+            <h1>Zzzetox</h1>
             <p>Adolescent Sleep Management Challenge App</p>
           </div>
         </div>
@@ -3881,7 +3894,7 @@
         const isLogin = which === "login";
         $("panel-login").setAttribute("aria-hidden", String(!isLogin));
         $("panel-signup").setAttribute("aria-hidden", String(isLogin));
-        document.title = isLogin ? "Sleep Challenge | Login" : "Sleep Challenge | Signup";
+        document.title = isLogin ? "Zzzetox | Login" : "Zzzetox | Signup";
       }
 
       let guestDeviceNoticeInterval = null;

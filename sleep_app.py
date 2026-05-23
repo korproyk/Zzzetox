@@ -1,5 +1,5 @@
 """
-Sleep Challenge — Flask server
+Zzzetox — Flask server
 Serves templates/index.html from GET / via render_template, POST /api/ai-feedback,
 and POST /api/validate-nickname (nickname policy).
 
@@ -148,11 +148,14 @@ def index():
     sleep_level_image_urls = {
         str(i): url_for("static", filename=f"images/level{i}.png") for i in range(1, 6)
     }
+    og_image_url = url_for("static", filename="images/zzzetox-challenge-og.jpg", _external=True)
     return _inject_index_password_toggle(
         render_template(
             "index.html",
             nickname_forbidden_terms=list(FORBIDDEN_TERMS),
             sleep_level_image_urls=sleep_level_image_urls,
+            og_image_url=og_image_url,
+            og_page_url=request.url_root.rstrip("/") + "/",
         )
     )
 
