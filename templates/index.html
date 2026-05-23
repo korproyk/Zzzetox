@@ -2882,7 +2882,6 @@
             <button type="button" class="ai-feedback-retry" id="aiFeedbackRetryBtn" hidden>Retry</button>
           </div>
         </div>
-        <button type="button" class="return-sleep-btn" id="feedbackReturnSleepBtn">Return to sleep</button>
       </section>
     </main>
 
@@ -2928,7 +2927,6 @@
             <div class="sleep-score-detail" id="sleepScoreDetail"></div>
           </div>
         </div>
-        <button type="button" class="return-sleep-btn" id="scoreReturnSleepBtn">Return to sleep</button>
       </section>
     </main>
 
@@ -5802,10 +5800,6 @@
         showPage("recommendation");
       });
 
-      $("scoreReturnSleepBtn").addEventListener("click", () => {
-        goTrackerFromFeedback();
-      });
-
       $("scoreRankingsNavBtn").addEventListener("click", () => {
         const session = getCurrentSessionOrNull();
         if (!session) {
@@ -5847,10 +5841,6 @@
       });
 
       $("rankingsReturnSleepBtn").addEventListener("click", () => {
-        goTrackerFromFeedback();
-      });
-
-      $("feedbackReturnSleepBtn").addEventListener("click", () => {
         goTrackerFromFeedback();
       });
 

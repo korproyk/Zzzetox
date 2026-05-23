@@ -1343,7 +1343,6 @@
             <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z" />
           </svg>
         </button>
-        <button type="button" class="return-sleep-btn" id="feedbackReturnSleepBtn">Return to sleep</button>
       </section>
     </main>
 
@@ -1377,7 +1376,6 @@
             <p class="sleep-score-detail" id="sleepScoreDetail"></p>
           </div>
         </div>
-        <button type="button" class="return-sleep-btn" id="scoreReturnSleepBtn">Return to sleep</button>
       </section>
     </main>
 
@@ -2558,15 +2556,7 @@
         showPage("feedback");
       });
 
-      $("scoreReturnSleepBtn").addEventListener("click", () => {
-        goTrackerFromFeedback();
-      });
-
       $("feedbackHomeBtn").addEventListener("click", () => {
-        goTrackerFromFeedback();
-      });
-
-      $("feedbackReturnSleepBtn").addEventListener("click", () => {
         goTrackerFromFeedback();
       });
 
