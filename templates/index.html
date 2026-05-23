@@ -1447,6 +1447,282 @@
         padding-bottom: 58px;
       }
 
+      .rankings-page {
+        gap: 12px;
+      }
+
+      .rankings-header {
+        display: grid;
+        grid-template-columns: 40px 1fr 40px;
+        align-items: center;
+        gap: 8px;
+        margin: 0 4px 4px;
+      }
+
+      .rankings-header-back {
+        width: 40px;
+        height: 40px;
+        justify-self: start;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: none;
+      }
+
+      .rankings-header-back:hover {
+        background: rgba(255, 255, 255, 0.14);
+        box-shadow: none;
+        transform: translateY(-1px);
+      }
+
+      .rankings-header-title {
+        margin: 0;
+        text-align: center;
+        font-size: clamp(20px, 3.2vw, 28px);
+        font-weight: 900;
+        letter-spacing: -0.02em;
+        color: #fff;
+      }
+
+      .rankings-header-stars {
+        justify-self: end;
+        display: flex;
+        gap: 3px;
+        align-items: center;
+        color: #a78bfa;
+        font-size: 11px;
+        line-height: 1;
+      }
+
+      .rankings-guest-cta {
+        margin: 4px 8px 0;
+        padding: 16px 16px 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(139, 92, 246, 0.35);
+        background: linear-gradient(145deg, rgba(30, 27, 75, 0.55), rgba(15, 23, 42, 0.75));
+      }
+
+      .rankings-guest-cta[hidden] {
+        display: none;
+      }
+
+      .rankings-guest-cta-title {
+        margin: 0 0 12px;
+        font-size: clamp(17px, 2.6vw, 22px);
+        font-weight: 900;
+        letter-spacing: -0.02em;
+        line-height: 1.25;
+        background: linear-gradient(90deg, #c084fc 0%, #818cf8 45%, #38bdf8 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      .rankings-guest-cta-body {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 12px;
+        align-items: start;
+        margin-bottom: 14px;
+      }
+
+      .rankings-guest-lock {
+        width: 44px;
+        height: 44px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        background: rgba(139, 92, 246, 0.22);
+        border: 1px solid rgba(167, 139, 250, 0.45);
+        color: #e9d5ff;
+        font-size: 20px;
+        flex-shrink: 0;
+      }
+
+      .rankings-guest-cta-copy {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.82);
+      }
+
+      .rankings-guest-cta-actions {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .rankings-signup-btn {
+        appearance: none;
+        border: 0;
+        border-radius: 999px;
+        padding: 10px 18px;
+        font-size: 14px;
+        font-weight: 800;
+        color: #fff;
+        cursor: pointer;
+        background: linear-gradient(90deg, #7c3aed 0%, #6366f1 40%, #14b8a6 100%);
+        box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+      }
+
+      .rankings-signup-btn:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.06);
+      }
+
+      .rankings-info {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        margin: 2px 10px 6px;
+        font-size: 12px;
+        line-height: 1.45;
+        color: rgba(255, 255, 255, 0.55);
+      }
+
+      .rankings-info-icon {
+        flex-shrink: 0;
+        width: 16px;
+        height: 16px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        display: grid;
+        place-items: center;
+        font-size: 10px;
+        font-weight: 800;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .rankings-columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin: 0 8px 8px;
+        align-items: start;
+      }
+
+      @media (max-width: 640px) {
+        .rankings-columns {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .rankings-panel {
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        padding: 12px 10px 8px;
+        min-width: 0;
+      }
+
+      .rankings-panel-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 10px 4px;
+        font-size: 13px;
+        font-weight: 800;
+        color: rgba(255, 255, 255, 0.95);
+      }
+
+      .rankings-panel-icon {
+        color: #a78bfa;
+        font-size: 16px;
+        line-height: 1;
+      }
+
+      .rankings-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .rankings-row {
+        display: grid;
+        grid-template-columns: auto auto 1fr auto;
+        gap: 8px;
+        align-items: center;
+        padding: 9px 4px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .rankings-row:last-child {
+        border-bottom: 0;
+      }
+
+      .rankings-row--you {
+        background: rgba(34, 211, 238, 0.06);
+        border-radius: 8px;
+      }
+
+      .rankings-rank-badge {
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 900;
+        color: #0f172a;
+        flex-shrink: 0;
+      }
+
+      .rankings-rank-badge--1 {
+        background: linear-gradient(145deg, #fde68a, #f59e0b);
+        color: #422006;
+      }
+
+      .rankings-rank-badge--2 {
+        background: linear-gradient(145deg, #e5e7eb, #9ca3af);
+        color: #1f2937;
+      }
+
+      .rankings-rank-badge--3 {
+        background: linear-gradient(145deg, #fdba74, #ea580c);
+        color: #431407;
+      }
+
+      .rankings-rank-badge--other {
+        background: rgba(71, 85, 105, 0.85);
+        color: rgba(255, 255, 255, 0.92);
+      }
+
+      .rankings-flag {
+        font-size: 1.15em;
+        line-height: 1;
+        flex-shrink: 0;
+      }
+
+      .rankings-label {
+        font-size: 12px;
+        font-weight: 650;
+        color: rgba(255, 255, 255, 0.92);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+      }
+
+      .rankings-pt {
+        font-size: 12px;
+        font-weight: 800;
+        color: #c084fc;
+        white-space: nowrap;
+      }
+
+      .rankings-empty-row {
+        padding: 14px 6px;
+        text-align: center;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .rankings-loading {
+        margin: 8px;
+        padding: 12px;
+        text-align: center;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.6);
+      }
+
       #sleepScorePage .sleep-score-panel {
         flex: 1;
         display: flex;
@@ -2035,9 +2311,6 @@
           <p class="guest-disclaimer-msg" id="guestDisclaimerMsg">
             ⚠️ You can't select your <br />country of residence by Guest!
           </p>
-          <p class="guest-disclaimer-msg" id="guestDisclaimerRankingMsg">
-            You can't see the<br />Country Ranking by Guest!
-          </p>
         </div>
         <button type="button" class="btn primary guest-disclaimer-continue" id="guestDisclaimerContinueBtn">Continue</button>
       </section>
@@ -2418,22 +2691,53 @@
       </section>
     </main>
 
-    <main class="app app-single" id="countryRankingsPage" aria-label="Country score rankings" hidden>
-      <section class="card feedback-page" aria-label="Country rankings by sleep score">
+    <main class="app app-single" id="countryRankingsPage" aria-label="Ranking" hidden>
+      <section class="card feedback-page rankings-page" aria-label="Global sleep challenge ranking">
         <div class="panel" aria-hidden="false">
-          <div class="writing-topbar">
-            <h2 class="feedback-page-title" id="countryRankingsPageTitle">Country rankings</h2>
-            <div class="topbar-nav-actions">
-              <button type="button" class="home-btn" id="rankingsBackToScoreBtn" aria-label="Back to sleep point and level">
-                <svg viewBox="0 0 24 24" aria-hidden="true" width="23" height="23">
-                  <path fill="#ffffff" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-                </svg>
-              </button>
+          <header class="rankings-header">
+            <button type="button" class="home-btn rankings-header-back" id="rankingsBackToScoreBtn" aria-label="Back to sleep point and level">
+              <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
+                <path fill="#ffffff" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+              </svg>
+            </button>
+            <h2 class="rankings-header-title" id="countryRankingsPageTitle">Ranking</h2>
+            <span class="rankings-header-stars" aria-hidden="true">
+              <span>✦</span><span>✦</span><span>✦</span>
+            </span>
+          </header>
+          <section class="rankings-guest-cta" id="rankingsGuestCta" hidden aria-label="Join the global sleep challenge">
+            <h3 class="rankings-guest-cta-title">Join the Global Sleep Challenge!</h3>
+            <div class="rankings-guest-cta-body">
+              <span class="rankings-guest-lock" aria-hidden="true">🔒</span>
+              <p class="rankings-guest-cta-copy">
+                Sign up to add your nickname, country flag, and sleep level to the global ranking board.
+              </p>
             </div>
+            <div class="rankings-guest-cta-actions">
+              <button type="button" class="rankings-signup-btn" id="rankingsSignupBtn">Sign up and join ›</button>
+            </div>
+          </section>
+          <p class="rankings-info" id="rankingsInfoNote">
+            <span class="rankings-info-icon" aria-hidden="true">i</span>
+            <span>Rankings are based on the average sleep of participants in the challenge.</span>
+          </p>
+          <p class="rankings-loading" id="rankingsLoading" hidden>Loading rankings…</p>
+          <div class="rankings-columns" id="rankingsColumns">
+            <section class="rankings-panel" aria-labelledby="rankingsNationsTitle">
+              <h3 class="rankings-panel-head" id="rankingsNationsTitle">
+                <span class="rankings-panel-icon" aria-hidden="true">🌐</span>
+                <span>Best Sleep Nations</span>
+              </h3>
+              <ol class="rankings-list" id="rankingsNationsList"></ol>
+            </section>
+            <section class="rankings-panel" aria-labelledby="rankingsSleepersTitle">
+              <h3 class="rankings-panel-head" id="rankingsSleepersTitle">
+                <span class="rankings-panel-icon" aria-hidden="true">🏆</span>
+                <span>Top Sleepers</span>
+              </h3>
+              <ol class="rankings-list" id="rankingsSleepersList"></ol>
+            </section>
           </div>
-          <hr class="writing-divider" aria-hidden="true" />
-          <p class="country-rankings-intro" id="countryRankingsIntro"></p>
-          <ol class="country-rankings-list" id="countryRankingsList" aria-label="Country score ranking"></ol>
         </div>
         <button type="button" class="return-sleep-btn" id="rankingsReturnSleepBtn">Return to sleep</button>
       </section>
@@ -3453,9 +3757,7 @@
       }
 
       function applyGuestUiRestrictions() {
-        const guest = isGuestSession(getCurrentSessionOrNull());
-        const rankingsBtn = $("scoreRankingsNavBtn");
-        if (rankingsBtn) rankingsBtn.hidden = guest;
+        /* Rankings are available to guests (read-only global board + signup CTA). */
       }
 
       function startGuestSession() {
@@ -4602,117 +4904,187 @@
         detEl.appendChild(block);
       }
 
-      function buildCountryRankings() {
+      function buildLocalRankingsPayload() {
         const users = loadUsers();
         const byCountry = new Map();
+        const sleepers = [];
 
         for (const email of Object.keys(users)) {
+          if (email === GUEST_SESSION_EMAIL) continue;
           const user = users[email];
           const rawCountry = String(user.country || "").trim();
-          if (!rawCountry) continue;
-          if (normCountryQuery(rawCountry) === normCountryQuery(COUNTRY_ANONYMOUS)) continue;
-
           const score = computeLatestSleepScore(email);
           if (score == null || score <= 0) continue;
 
-          const { displayName, alpha2 } = resolveCountryForFlag(rawCountry);
+          const name = String(user.name || "").trim() || "Sleeper";
+          sleepers.push({
+            name,
+            country: rawCountry,
+            score,
+            email,
+          });
+
+          if (!rawCountry || normCountryQuery(rawCountry) === normCountryQuery(COUNTRY_ANONYMOUS)) continue;
+          const { displayName } = resolveCountryForFlag(rawCountry);
           const country = displayName || rawCountry;
-          const prev = byCountry.get(country) || { sum: 0, count: 0, alpha2: "" };
+          const prev = byCountry.get(country) || { sum: 0, count: 0 };
           prev.sum += score;
           prev.count += 1;
-          if (alpha2 && !prev.alpha2) prev.alpha2 = alpha2;
           byCountry.set(country, prev);
         }
 
-        const rows = [];
+        const nations = [];
         for (const [country, agg] of byCountry) {
-          const score = Math.round(agg.sum / agg.count);
-          if (score <= 0) continue;
-          rows.push({ country, score, alpha2: agg.alpha2 || "" });
+          const avg = Math.round(agg.sum / agg.count);
+          if (avg > 0) nations.push({ country, score: avg });
         }
+        nations.sort((a, b) => b.score - a.score || a.country.localeCompare(b.country));
+        sleepers.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
 
-        rows.sort((a, b) => {
-          if (b.score !== a.score) return b.score - a.score;
-          return a.country.localeCompare(b.country, undefined, { sensitivity: "base" });
-        });
-        return rows;
+        return { nations, sleepers };
       }
 
-      function renderCountryRankingsPage() {
-        const listEl = $("countryRankingsList");
-        const introEl = $("countryRankingsIntro");
-        if (!listEl) return;
+      function mapLocalRankingsPayload(local) {
+        return {
+          nations: local.nations.map(({ country, score }) => ({ country, score })),
+          sleepers: local.sleepers.map(({ name, country, score, email }) => ({
+            name,
+            country,
+            score,
+            email,
+          })),
+        };
+      }
 
-        const session = getCurrentSessionOrNull();
-        if (isGuestSession(session)) {
-          if (introEl) {
-            introEl.textContent =
-              "Country rankings are not available in Guest mode because no country of residence is selected.";
+      async function fetchGlobalRankings() {
+        const local = mapLocalRankingsPayload(buildLocalRankingsPayload());
+        try {
+          const res = await fetch("/api/rankings", { headers: { Accept: "application/json" } });
+          const data = await res.json();
+          if (res.ok && data && data.ok) {
+            const nations = Array.isArray(data.nations) ? data.nations : [];
+            const sleepers = Array.isArray(data.sleepers) ? data.sleepers : [];
+            if (nations.length || sleepers.length) {
+              return {
+                nations,
+                sleepers: sleepers.map((row) => ({
+                  name: row.name,
+                  country: row.country,
+                  score: row.score,
+                  email: row.email || "",
+                })),
+              };
+            }
           }
-          listEl.replaceChildren();
+        } catch {
+          /* use local fallback */
+        }
+        return local;
+      }
+
+      function rankingsRankBadgeClass(rank) {
+        if (rank === 1) return "rankings-rank-badge rankings-rank-badge--1";
+        if (rank === 2) return "rankings-rank-badge rankings-rank-badge--2";
+        if (rank === 3) return "rankings-rank-badge rankings-rank-badge--3";
+        return "rankings-rank-badge rankings-rank-badge--other";
+      }
+
+      function renderRankingsListRow({ rank, flag, label, points, highlight }) {
+        const li = document.createElement("li");
+        li.className = "rankings-row";
+        if (highlight) li.classList.add("rankings-row--you");
+
+        const badge = document.createElement("span");
+        badge.className = rankingsRankBadgeClass(rank);
+        badge.textContent = String(rank);
+
+        const flagEl = document.createElement("span");
+        flagEl.className = "rankings-flag";
+        flagEl.setAttribute("aria-hidden", "true");
+        flagEl.textContent = flag || "🏳️";
+
+        const labelEl = document.createElement("span");
+        labelEl.className = "rankings-label";
+        labelEl.textContent = label;
+
+        li.append(badge, flagEl, labelEl);
+        if (points != null) {
+          const pt = document.createElement("span");
+          pt.className = "rankings-pt";
+          pt.textContent = `${points} pt`;
+          li.appendChild(pt);
+        }
+        return li;
+      }
+
+      function renderRankingsPanelList(listEl, rows, renderRow) {
+        if (!listEl) return;
+        listEl.replaceChildren();
+        if (!rows.length) {
           const empty = document.createElement("li");
-          empty.className = "country-rankings-empty";
-          empty.textContent = "Not available for Guest.";
+          empty.className = "rankings-empty-row";
+          empty.textContent = "No entries yet.";
           listEl.appendChild(empty);
           return;
         }
+        const top = rows.slice(0, 5);
+        top.forEach((row, index) => listEl.appendChild(renderRow(row, index + 1)));
+      }
+
+      async function renderCountryRankingsPage() {
+        const nationsEl = $("rankingsNationsList");
+        const sleepersEl = $("rankingsSleepersList");
+        const guestCta = $("rankingsGuestCta");
+        const loadingEl = $("rankingsLoading");
+        const columnsEl = $("rankingsColumns");
+        if (!nationsEl || !sleepersEl) return;
+
+        const session = getCurrentSessionOrNull();
+        const guest = isGuestSession(session);
+        if (guestCta) guestCta.hidden = !guest;
 
         let myCountry = "";
-        if (session) {
-          const u = loadUsers()[session.email] || {};
+        let myName = "";
+        let myEmail = "";
+        if (session && !guest) {
+          myEmail = session.email || "";
+          myName = String(session.name || "").trim();
+          const u = loadUsers()[myEmail] || {};
           myCountry = resolveCountryForFlag(String(u.country || session.country || "")).displayName;
         }
 
-        const rows = buildCountryRankings();
-        listEl.replaceChildren();
+        if (loadingEl) loadingEl.hidden = false;
+        if (columnsEl) columnsEl.hidden = true;
 
-        if (!rows.length) {
-          if (introEl) {
-            introEl.textContent =
-              "No countries with scores yet. Record sleep for at least one user on this device to build the ranking.";
-          }
-          const empty = document.createElement("li");
-          empty.className = "country-rankings-empty";
-          empty.textContent = "No ranked countries yet.";
-          listEl.appendChild(empty);
-          return;
-        }
+        const { nations, sleepers } = await fetchGlobalRankings();
 
-        if (introEl) {
-          introEl.textContent =
-            "Ranked by average sleep score (highest first). Ties are sorted A–Z. Countries with a score of 0 are not listed.";
-        }
+        if (loadingEl) loadingEl.hidden = true;
+        if (columnsEl) columnsEl.hidden = false;
 
-        rows.forEach((row, index) => {
-          const li = document.createElement("li");
-          li.className = "country-rankings-item";
-          if (myCountry && row.country === myCountry) li.classList.add("country-rankings-item--you");
+        renderRankingsPanelList(nationsEl, nations, (row, rank) => {
+          const { alpha2, displayName } = resolveCountryForFlag(row.country);
+          const label = displayName || row.country || "—";
+          return renderRankingsListRow({
+            rank,
+            flag: alpha2ToFlagEmoji(alpha2),
+            label,
+            points: null,
+            highlight: Boolean(myCountry && label === myCountry),
+          });
+        });
 
-          const rank = document.createElement("span");
-          rank.className = "country-rankings-rank";
-          rank.textContent = String(index + 1);
-
-          const nameWrap = document.createElement("div");
-          nameWrap.className = "country-rankings-name-wrap";
-          const flag = alpha2ToFlagEmoji(row.alpha2);
-          if (flag) {
-            const flagEl = document.createElement("span");
-            flagEl.className = "country-rankings-flag";
-            flagEl.setAttribute("aria-hidden", "true");
-            flagEl.textContent = flag;
-            nameWrap.appendChild(flagEl);
-          }
-          const nameEl = document.createElement("span");
-          nameEl.className = "country-rankings-name";
-          nameEl.textContent = row.country;
-          nameWrap.appendChild(nameEl);
-
-          const scoreEl = document.createElement("span");
-          scoreEl.className = "country-rankings-score";
-          scoreEl.textContent = String(row.score);
-
-          li.append(rank, nameWrap, scoreEl);
-          listEl.appendChild(li);
+        renderRankingsPanelList(sleepersEl, sleepers, (row, rank) => {
+          const { alpha2 } = resolveCountryForFlag(row.country);
+          const highlight =
+            Boolean(myEmail && row.email && row.email === myEmail) ||
+            Boolean(myName && row.name && row.name === myName);
+          return renderRankingsListRow({
+            rank,
+            flag: alpha2ToFlagEmoji(alpha2),
+            label: row.name || "—",
+            points: row.score,
+            highlight,
+          });
         });
       }
 
@@ -4838,12 +5210,15 @@
           showPage("auth");
           return;
         }
-        if (isGuestSession(session)) {
-          toast("danger", "Country rankings are not available in Guest mode.");
-          return;
-        }
         renderCountryRankingsPage();
         showPage("rankings");
+      });
+
+      $("rankingsSignupBtn").addEventListener("click", () => {
+        clearSession();
+        showPage("auth");
+        showAuthFormMode();
+        setActiveTab("signup");
       });
 
       $("rankingsBackToScoreBtn").addEventListener("click", () => {

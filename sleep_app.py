@@ -48,6 +48,7 @@ from flask import Flask, abort, jsonify, render_template, request, send_from_dir
 
 from account_store import get_account_store
 from nickname_validation import FORBIDDEN_TERMS, nickname_validation_error
+from sleep_scoring import compute_latest_sleep_score
 
 logger = logging.getLogger(__name__)
 
@@ -928,6 +929,81 @@ def _openai_feedback(payload: dict) -> str | None:
     except TimeoutError:
         logger.warning("OpenAI: request timed out after 45s")
         return None
+
+
+GUEST_EMAIL = "__guest__@zzzetox.local"
+COUNTRY_ANONYMOUS = "ANONYMOUS"
+
+
+def _norm_country_key(country: str) -> str:
+    return (
+        str(country or "")
+        .strip()
+        .lower()
+        .replace(".", "")
+        .replace("’", "'")
+        .replace("'", "'")
+    )
+
+
+def _build_global_rankings() -> dict:
+    store = get_account_store()
+    by_country: dict[str, dict] = {}
+    sleepers: list[dict] = []
+
+    for row in store.list_ranking_participants():
+        email = str(row.get("email") or "").strip().lower()
+        if not email or email == GUEST_EMAIL:
+            continue
+        country_raw = str(row.get("country") or "").strip()
+        if _norm_country_key(country_raw) == _norm_country_key(COUNTRY_ANONYMOUS):
+            country_raw = ""
+        age = _parse_age(row.get("age"))
+        bucket = row.get("bucket") if isinstance(row.get("bucket"), dict) else {}
+        score = compute_latest_sleep_score(age, bucket)
+        if score is None or score <= 0:
+            continue
+
+        name = str(row.get("name") or "").strip() or "Sleeper"
+        sleepers.append(
+            {
+                "email": email,
+                "name": name,
+                "country": country_raw,
+                "score": int(score),
+            }
+        )
+
+        if country_raw:
+            country = country_raw
+            prev = by_country.get(country) or {"sum": 0, "count": 0}
+            prev["sum"] += int(score)
+            prev["count"] += 1
+            by_country[country] = prev
+
+    nations = []
+    for country, agg in by_country.items():
+        avg = round(agg["sum"] / agg["count"])
+        if avg > 0:
+            nations.append({"country": country, "score": avg})
+
+    nations.sort(key=lambda x: (-x["score"], x["country"].lower()))
+    sleepers.sort(key=lambda x: (-x["score"], x["name"].lower()))
+
+    return {
+        "nations": nations[:50],
+        "sleepers": [
+            {k: v for k, v in s.items() if k != "email"}
+            for s in sleepers[:50]
+        ],
+    }
+
+
+@app.route("/api/rankings", methods=["GET"])
+def api_rankings():
+    """Public global sleep challenge rankings (nations + top sleepers)."""
+    data = _build_global_rankings()
+    return jsonify({"ok": True, **data})
 
 
 @app.route("/api/ai-feedback", methods=["POST"])

@@ -243,6 +243,44 @@ class AccountStore:
             finally:
                 conn.close()
 
+    def list_ranking_participants(self) -> list[dict[str, Any]]:
+        """Registered users with profile fields and sleep bucket for global rankings."""
+        with self._lock:
+            conn = self._connect()
+            try:
+                rows = conn.execute(
+                    """
+                    SELECT u.email, u.name, u.age, u.country, s.payload
+                    FROM users u
+                    LEFT JOIN sleep_data s ON s.email = u.email
+                    ORDER BY u.created_at ASC
+                    """
+                ).fetchall()
+                out: list[dict[str, Any]] = []
+                for row in rows:
+                    bucket: dict[str, Any] = {"activeStartAt": None, "history": [], "sleepGoalHours": None}
+                    if row["payload"]:
+                        try:
+                            data = json.loads(row["payload"])
+                            if isinstance(data, dict):
+                                bucket = data
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+                    if "history" not in bucket or not isinstance(bucket["history"], list):
+                        bucket["history"] = []
+                    out.append(
+                        {
+                            "email": row["email"],
+                            "name": row["name"],
+                            "age": row["age"],
+                            "country": row["country"] or "",
+                            "bucket": bucket,
+                        }
+                    )
+                return out
+            finally:
+                conn.close()
+
     def save_sleep_bucket(self, email: str, bucket: dict[str, Any]) -> None:
         email = _normalize_email(email)
         payload = json.dumps(bucket, ensure_ascii=False)
