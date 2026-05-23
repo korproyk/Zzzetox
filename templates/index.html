@@ -3768,7 +3768,7 @@
         const serverHist = Array.isArray(serverBucket.history) ? serverBucket.history : [];
         const localHist = Array.isArray(local.history) ? local.history : [];
         const merged = {
-          activeStartAt: serverBucket.activeStartAt ?? local.activeStartAt ?? null,
+          activeStartAt: local.activeStartAt ?? serverBucket.activeStartAt ?? null,
           sleepGoalHours:
             serverBucket.sleepGoalHours != null ? serverBucket.sleepGoalHours : local.sleepGoalHours ?? null,
           history: serverHist.length >= localHist.length ? serverHist : localHist,
@@ -3988,10 +3988,6 @@
       let selectedGoalHours = null;
 
       function showPage(pageName) {
-        if (pageName !== "tracker" && pageName !== "progress" && isSleepTrackingActive()) {
-          stopSleepTrackingBecausePageLeft();
-          return;
-        }
         $("authPage").hidden = pageName !== "auth";
         $("goalPage").hidden = pageName !== "goal";
         $("trackerPage").hidden = pageName !== "tracker";
@@ -4536,7 +4532,7 @@
         if (label) label.classList.toggle("sleep-minus20-label-locked", locked);
       }
 
-      function completeSleepTracking(endDate, { auto = false, leftPage = false } = {}) {
+      function completeSleepTracking(endDate, { auto = false } = {}) {
         const session = getCurrentSessionOrNull();
         if (!session) return false;
 
@@ -4561,11 +4557,7 @@
         saveSleepStore(store);
         renderSleepMeta();
         if (auto) {
-          if (leftPage) {
-            toast("ok", `Tracking stopped because you left this screen. Recorded: ${durationText}`);
-          } else {
           toast("ok", `Tracking stopped automatically after 16 hours. Recorded: ${durationText}`);
-          }
         } else {
           toast("ok", `Wakeup recorded! Total sleep time: ${durationText}`);
         }
@@ -4578,12 +4570,6 @@
         const session = getCurrentSessionOrNull();
         if (!session) return false;
         return Boolean(getSleepBucket(session.email).bucket.activeStartAt);
-      }
-
-      /** Stop bedtime tracking when the user intentionally leaves (other window/app or in-app screen). */
-      function stopSleepTrackingBecausePageLeft() {
-        if (!isSleepTrackingActive()) return false;
-        return completeSleepTracking(new Date(), { auto: true, leftPage: true });
       }
 
       function onDocumentVisibilityChange() {
@@ -4638,7 +4624,7 @@
         if (active) {
           const elapsedMs = Date.now() - active.getTime();
           timerEl.textContent = formatDuration(elapsedMs);
-          metaEl.textContent = `Bedtime started: ${active.toLocaleString()} | Screen lock and PC sleep are OK. Tracking ends when you press wakeup or leave this tracker screen.`;
+          metaEl.textContent = `Bedtime started: ${active.toLocaleString()} | Keeps running while locked or after you turn the device off. Press wakeup when you are done.`;
         } else {
           timerEl.textContent = "00:00:00";
           const recent = bucket.history[bucket.history.length - 1];
@@ -4662,7 +4648,7 @@
         store[session.email] = bucket;
         saveSleepStore(store);
         renderSleepMeta();
-        toast("ok", "Bedtime tracking started. Screen lock is OK — press wakeup when you are done.");
+        toast("ok", "Bedtime tracking started. It keeps running until you press wakeup.");
       }
 
       function recordWakeup() {
