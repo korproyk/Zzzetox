@@ -1648,11 +1648,6 @@
         border-bottom: 0;
       }
 
-      .rankings-row--you {
-        background: rgba(34, 211, 238, 0.06);
-        border-radius: 8px;
-      }
-
       .rankings-rank-badge {
         width: 26px;
         height: 26px;
@@ -1721,6 +1716,262 @@
         text-align: center;
         font-size: 13px;
         color: rgba(255, 255, 255, 0.6);
+      }
+
+      #countryRankingsPage .rankings-page .panel {
+        width: 100%;
+        max-width: min(880px, 100%);
+        margin-inline: auto;
+      }
+
+      .rankings-layout[hidden] {
+        display: none !important;
+      }
+
+      .rankings-member-stack {
+        display: flex;
+        flex-direction: column;
+        gap: clamp(12px, 2.5vw, 18px);
+        margin: 0 8px 8px;
+      }
+
+      .rankings-status-card {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: clamp(10px, 2.5vw, 18px);
+        align-items: center;
+        padding: clamp(14px, 3vw, 20px) clamp(12px, 2.5vw, 22px);
+        border-radius: 16px;
+        border: 1px solid rgba(139, 92, 246, 0.4);
+        background: linear-gradient(145deg, rgba(30, 27, 75, 0.5), rgba(15, 23, 42, 0.72));
+      }
+
+      .rankings-status-avatar {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        min-width: 64px;
+      }
+
+      .rankings-status-avatar-moon {
+        width: 52px;
+        height: 52px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        font-size: 24px;
+        background: rgba(139, 92, 246, 0.2);
+        border: 1px solid rgba(167, 139, 250, 0.45);
+      }
+
+      .rankings-status-avatar-brand {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: rgba(255, 255, 255, 0.88);
+      }
+
+      .rankings-status-rank-block {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+
+      .rankings-status-kicker {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .rankings-status-rank-label {
+        font-size: 13px;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.75);
+      }
+
+      .rankings-status-rank-value {
+        font-size: clamp(28px, 6vw, 40px);
+        font-weight: 900;
+        letter-spacing: -0.03em;
+        line-height: 1;
+        color: #c4b5fd;
+      }
+
+      .rankings-status-user {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(0, 0, 0, 0.2);
+        min-width: 0;
+      }
+
+      .rankings-status-user-flag {
+        font-size: 1.35em;
+        line-height: 1;
+      }
+
+      .rankings-status-user-name {
+        font-size: 14px;
+        font-weight: 800;
+        color: #fff;
+        max-width: 14ch;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .rankings-status-user-pt {
+        font-size: 14px;
+        font-weight: 800;
+        color: #c084fc;
+      }
+
+      .rankings-section {
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        padding: 12px 12px 8px;
+      }
+
+      .rankings-section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin: 0 0 10px 2px;
+      }
+
+      .rankings-section-head-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .rankings-section-title {
+        margin: 0;
+        font-size: clamp(14px, 2.2vw, 16px);
+        font-weight: 800;
+        color: rgba(255, 255, 255, 0.96);
+      }
+
+      .rankings-section-link {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        padding: 4px 0;
+        font-size: 12px;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.55);
+        cursor: pointer;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      .rankings-section-link:hover {
+        color: #c4b5fd;
+      }
+
+      .rankings-row--you {
+        background: rgba(139, 92, 246, 0.24);
+        border-radius: 10px;
+      }
+
+      .rankings-row--you .rankings-label {
+        color: #fff;
+        font-weight: 800;
+      }
+
+      .rankings-rank-plain {
+        min-width: 2.25ch;
+        font-size: 13px;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.62);
+        text-align: right;
+        flex-shrink: 0;
+      }
+
+      .rankings-you-tag {
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.65);
+        margin-left: 4px;
+      }
+
+      .rankings-nations-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: clamp(8px, 1.5vw, 14px) clamp(6px, 1.2vw, 12px);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .rankings-nation-cell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        text-align: center;
+        min-width: 0;
+        padding: 6px 2px;
+      }
+
+      .rankings-nation-name {
+        font-size: clamp(10px, 1.8vw, 12px);
+        font-weight: 650;
+        color: rgba(255, 255, 255, 0.88);
+        line-height: 1.25;
+        word-break: break-word;
+      }
+
+      .rankings-around-empty {
+        padding: 12px 6px;
+        text-align: center;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.55);
+        line-height: 1.45;
+      }
+
+      @media (max-width: 520px) {
+        .rankings-status-card {
+          grid-template-columns: auto 1fr;
+          grid-template-rows: auto auto;
+        }
+
+        .rankings-status-user {
+          grid-column: 1 / -1;
+          flex-direction: row;
+          align-items: center;
+          justify-content: flex-start;
+          width: 100%;
+        }
+      }
+
+      @media (min-width: 720px) {
+        .rankings-member-stack {
+          margin-inline: clamp(12px, 4vw, 24px);
+        }
+
+        .rankings-nations-grid {
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+        }
+      }
+
+      @media (min-width: 1024px) {
+        .rankings-status-card {
+          padding: 22px 28px;
+        }
+
+        .rankings-section {
+          padding: 16px 18px 12px;
+        }
       }
 
       #sleepScorePage .sleep-score-panel {
@@ -2717,25 +2968,82 @@
               <button type="button" class="rankings-signup-btn" id="rankingsSignupBtn">Sign up and join ›</button>
             </div>
           </section>
-          <p class="rankings-info" id="rankingsInfoNote">
-            <span class="rankings-info-icon" aria-hidden="true">i</span>
-            <span>Rankings are based on the average sleep of participants in the challenge.</span>
-          </p>
           <p class="rankings-loading" id="rankingsLoading" hidden>Loading rankings…</p>
-          <div class="rankings-columns" id="rankingsColumns">
-            <section class="rankings-panel" aria-labelledby="rankingsNationsTitle">
-              <h3 class="rankings-panel-head" id="rankingsNationsTitle">
-                <span class="rankings-panel-icon" aria-hidden="true">🌐</span>
-                <span>Best Sleep Nations</span>
-              </h3>
-              <ol class="rankings-list" id="rankingsNationsList"></ol>
+
+          <div class="rankings-layout rankings-guest-layout" id="rankingsGuestLayout" hidden>
+            <p class="rankings-info" id="rankingsGuestInfoNote">
+              <span class="rankings-info-icon" aria-hidden="true">i</span>
+              <span>Rankings are based on the average sleep of participants in the challenge.</span>
+            </p>
+            <div class="rankings-columns" id="rankingsColumns">
+              <section class="rankings-panel" aria-labelledby="rankingsGuestNationsTitle">
+                <h3 class="rankings-panel-head" id="rankingsGuestNationsTitle">
+                  <span class="rankings-panel-icon" aria-hidden="true">🌐</span>
+                  <span>Best Sleep Nations</span>
+                </h3>
+                <ol class="rankings-list" id="rankingsNationsList"></ol>
+              </section>
+              <section class="rankings-panel" aria-labelledby="rankingsGuestSleepersTitle">
+                <h3 class="rankings-panel-head" id="rankingsGuestSleepersTitle">
+                  <span class="rankings-panel-icon" aria-hidden="true">🏆</span>
+                  <span>Top Sleepers</span>
+                </h3>
+                <ol class="rankings-list" id="rankingsSleepersList"></ol>
+              </section>
+            </div>
+          </div>
+
+          <div class="rankings-layout rankings-member-stack" id="rankingsMemberLayout" hidden>
+            <section class="rankings-status-card" aria-label="Your ranking status">
+              <div class="rankings-status-avatar" aria-hidden="true">
+                <span class="rankings-status-avatar-moon">🌙</span>
+                <span class="rankings-status-avatar-brand">Zzzetox</span>
+              </div>
+              <div class="rankings-status-rank-block">
+                <span class="rankings-status-kicker">YOUR STATUS</span>
+                <span class="rankings-status-rank-label">Your Rank</span>
+                <span class="rankings-status-rank-value" id="rankingsMyRankValue">#—</span>
+              </div>
+              <div class="rankings-status-user">
+                <span class="rankings-status-user-flag" id="rankingsMyFlag" aria-hidden="true"></span>
+                <span class="rankings-status-user-name" id="rankingsMyName">—</span>
+                <span class="rankings-status-user-pt" id="rankingsMyScore">— pt</span>
+              </div>
             </section>
-            <section class="rankings-panel" aria-labelledby="rankingsSleepersTitle">
-              <h3 class="rankings-panel-head" id="rankingsSleepersTitle">
-                <span class="rankings-panel-icon" aria-hidden="true">🏆</span>
-                <span>Top Sleepers</span>
-              </h3>
-              <ol class="rankings-list" id="rankingsSleepersList"></ol>
+            <p class="rankings-info" id="rankingsMemberInfoNote">
+              <span class="rankings-info-icon" aria-hidden="true">i</span>
+              <span>Rankings are based on participant sleep data in the challenge.</span>
+            </p>
+            <section class="rankings-section" aria-labelledby="rankingsAroundTitle">
+              <div class="rankings-section-head">
+                <div class="rankings-section-head-left">
+                  <span class="rankings-panel-icon" aria-hidden="true">👥</span>
+                  <h3 class="rankings-section-title" id="rankingsAroundTitle">Around Your Rank</h3>
+                </div>
+                <button type="button" class="rankings-section-link" id="rankingsAroundMoreBtn" hidden>View more ›</button>
+              </div>
+              <ol class="rankings-list" id="rankingsAroundList" aria-label="Sleepers around your rank"></ol>
+              <p class="rankings-around-empty" id="rankingsAroundEmpty" hidden>Record sleep to appear on the ranking board.</p>
+            </section>
+            <section class="rankings-section" aria-labelledby="rankingsTopSleepersTitle">
+              <div class="rankings-section-head">
+                <div class="rankings-section-head-left">
+                  <span class="rankings-panel-icon" aria-hidden="true">🏆</span>
+                  <h3 class="rankings-section-title" id="rankingsTopSleepersTitle">Top Sleepers</h3>
+                </div>
+                <button type="button" class="rankings-section-link" id="rankingsTopMoreBtn">View full ranking ›</button>
+              </div>
+              <ol class="rankings-list" id="rankingsTopSleepersList" aria-label="Top sleepers"></ol>
+            </section>
+            <section class="rankings-section" aria-labelledby="rankingsMemberNationsTitle">
+              <div class="rankings-section-head">
+                <div class="rankings-section-head-left">
+                  <span class="rankings-panel-icon" aria-hidden="true">🌐</span>
+                  <h3 class="rankings-section-title" id="rankingsMemberNationsTitle">Best Sleep Nations</h3>
+                </div>
+                <button type="button" class="rankings-section-link" id="rankingsNationsMoreBtn">View full ranking ›</button>
+              </div>
+              <ol class="rankings-nations-grid" id="rankingsNationsGrid" aria-label="Best sleep nations"></ol>
             </section>
           </div>
         </div>
@@ -5028,10 +5336,68 @@
         return "rankings-rank-badge rankings-rank-badge--other";
       }
 
-      function renderRankingsListRow({ rank, flag, label, points, highlight }) {
+      let rankingsMemberExpand = {
+        around: false,
+        top: false,
+        nations: false,
+      };
+
+      function findMySleeperIndex(sleepers, { email, name, country }) {
+        const normName = String(name || "").trim().toLowerCase();
+        const countryDisp = resolveCountryForFlag(country).displayName;
+        for (let i = 0; i < sleepers.length; i++) {
+          const row = sleepers[i];
+          if (email && row.email && row.email === email) return i;
+          if (!normName) continue;
+          if (String(row.name || "").trim().toLowerCase() !== normName) continue;
+          if (!countryDisp) return i;
+          if (resolveCountryForFlag(row.country).displayName === countryDisp) return i;
+        }
+        return -1;
+      }
+
+      function renderRankingsSleeperRow({ rank, flag, label, points, highlight, showYouTag = false, plainRank = false }) {
         const li = document.createElement("li");
         li.className = "rankings-row";
         if (highlight) li.classList.add("rankings-row--you");
+
+        const rankEl = document.createElement("span");
+        if (plainRank) {
+          rankEl.className = "rankings-rank-plain";
+          rankEl.textContent = String(rank);
+        } else {
+          rankEl.className = rankingsRankBadgeClass(rank);
+          rankEl.textContent = String(rank);
+        }
+
+        const flagEl = document.createElement("span");
+        flagEl.className = "rankings-flag";
+        flagEl.setAttribute("aria-hidden", "true");
+        flagEl.textContent = flag || "🏳️";
+
+        const labelEl = document.createElement("span");
+        labelEl.className = "rankings-label";
+        labelEl.textContent = label;
+        if (showYouTag && highlight) {
+          const you = document.createElement("span");
+          you.className = "rankings-you-tag";
+          you.textContent = "(You)";
+          labelEl.appendChild(you);
+        }
+
+        li.append(rankEl, flagEl, labelEl);
+        if (points != null) {
+          const pt = document.createElement("span");
+          pt.className = "rankings-pt";
+          pt.textContent = `${points} pt`;
+          li.appendChild(pt);
+        }
+        return li;
+      }
+
+      function renderRankingsNationCell({ rank, flag, label }) {
+        const li = document.createElement("li");
+        li.className = "rankings-nation-cell";
 
         const badge = document.createElement("span");
         badge.className = rankingsRankBadgeClass(rank);
@@ -5042,89 +5408,248 @@
         flagEl.setAttribute("aria-hidden", "true");
         flagEl.textContent = flag || "🏳️";
 
-        const labelEl = document.createElement("span");
-        labelEl.className = "rankings-label";
-        labelEl.textContent = label;
+        const nameEl = document.createElement("span");
+        nameEl.className = "rankings-nation-name";
+        nameEl.textContent = label;
 
-        li.append(badge, flagEl, labelEl);
-        if (points != null) {
-          const pt = document.createElement("span");
-          pt.className = "rankings-pt";
-          pt.textContent = `${points} pt`;
-          li.appendChild(pt);
-        }
+        li.append(badge, flagEl, nameEl);
         return li;
       }
 
-      function renderRankingsPanelList(listEl, rows, renderRow) {
+      function renderRankingsPanelList(listEl, rows, renderRow, emptyText) {
         if (!listEl) return;
         listEl.replaceChildren();
         if (!rows.length) {
           const empty = document.createElement("li");
           empty.className = "rankings-empty-row";
-          empty.textContent = "No entries yet.";
+          empty.textContent = emptyText || "No entries yet.";
           listEl.appendChild(empty);
           return;
         }
-        const top = rows.slice(0, 5);
-        top.forEach((row, index) => listEl.appendChild(renderRow(row, index + 1)));
+        rows.forEach((row) => listEl.appendChild(renderRow(row)));
       }
 
-      async function renderCountryRankingsPage() {
+      function renderGuestRankingsPage({ nations, sleepers, myCountry, myEmail, myName }) {
         const nationsEl = $("rankingsNationsList");
         const sleepersEl = $("rankingsSleepersList");
+        renderRankingsPanelList(
+          nationsEl,
+          nations.slice(0, 5).map((row, index) => ({ ...row, rank: index + 1 })),
+          (row) => {
+            const { alpha2, displayName } = resolveCountryForFlag(row.country);
+            return renderRankingsSleeperRow({
+              rank: row.rank,
+              flag: alpha2ToFlagEmoji(alpha2),
+              label: displayName || row.country || "—",
+              points: null,
+              highlight: Boolean(myCountry && (displayName || row.country) === myCountry),
+            });
+          }
+        );
+        renderRankingsPanelList(
+          sleepersEl,
+          sleepers.slice(0, 5).map((row, index) => ({ ...row, rank: index + 1 })),
+          (row) => {
+            const { alpha2 } = resolveCountryForFlag(row.country);
+            const highlight =
+              Boolean(myEmail && row.email && row.email === myEmail) ||
+              Boolean(myName && row.name && row.name === myName);
+            return renderRankingsSleeperRow({
+              rank: row.rank,
+              flag: alpha2ToFlagEmoji(alpha2),
+              label: row.name || "—",
+              points: row.score,
+              highlight,
+            });
+          }
+        );
+      }
+
+      function renderMemberRankingsPage({ nations, sleepers, session, myEmail, myName, myCountryRaw }) {
+        const myIndex = findMySleeperIndex(sleepers, {
+          email: myEmail,
+          name: myName,
+          country: myCountryRaw,
+        });
+        const myRow = myIndex >= 0 ? sleepers[myIndex] : null;
+        const myRank = myIndex >= 0 ? myIndex + 1 : null;
+        const myScore =
+          myRow?.score ??
+          (myEmail ? computeLatestSleepScore(myEmail) : null);
+        const { alpha2: myAlpha2 } = resolveCountryForFlag(myCountryRaw);
+
+        const rankEl = $("rankingsMyRankValue");
+        const flagEl = $("rankingsMyFlag");
+        const nameEl = $("rankingsMyName");
+        const scoreEl = $("rankingsMyScore");
+        if (rankEl) rankEl.textContent = myRank ? `#${myRank}` : "#—";
+        if (flagEl) flagEl.textContent = alpha2ToFlagEmoji(myAlpha2) || "🏳️";
+        if (nameEl) nameEl.textContent = myName || "—";
+        if (scoreEl) scoreEl.textContent = myScore != null && myScore > 0 ? `${myScore} pt` : "— pt";
+
+        const aroundList = $("rankingsAroundList");
+        const aroundEmpty = $("rankingsAroundEmpty");
+        const aroundMoreBtn = $("rankingsAroundMoreBtn");
+        if (myIndex >= 0) {
+          if (aroundEmpty) aroundEmpty.hidden = true;
+          if (aroundList) aroundList.hidden = false;
+          if (aroundMoreBtn) {
+            aroundMoreBtn.hidden = sleepers.length <= 5;
+            aroundMoreBtn.textContent = rankingsMemberExpand.around ? "View less ›" : "View more ›";
+          }
+          const windowSize = rankingsMemberExpand.around ? 10 : 2;
+          const start = Math.max(0, myIndex - windowSize);
+          const end = Math.min(sleepers.length, myIndex + windowSize + 1);
+          const aroundRows = sleepers.slice(start, end).map((row, offset) => ({
+            ...row,
+            rank: start + offset + 1,
+            isYou: start + offset === myIndex,
+          }));
+          renderRankingsPanelList(aroundList, aroundRows, (row) => {
+            const { alpha2 } = resolveCountryForFlag(row.country);
+            return renderRankingsSleeperRow({
+              rank: row.rank,
+              flag: alpha2ToFlagEmoji(alpha2),
+              label: row.name || "—",
+              points: row.score,
+              highlight: row.isYou,
+              showYouTag: true,
+              plainRank: true,
+            });
+          });
+        } else {
+          if (aroundList) {
+            aroundList.hidden = true;
+            aroundList.replaceChildren();
+          }
+          if (aroundEmpty) aroundEmpty.hidden = false;
+          if (aroundMoreBtn) aroundMoreBtn.hidden = true;
+        }
+
+        const topMoreBtn = $("rankingsTopMoreBtn");
+        const topLimit = rankingsMemberExpand.top ? sleepers.length : 10;
+        if (topMoreBtn) {
+          topMoreBtn.hidden = sleepers.length <= 10;
+          topMoreBtn.textContent = rankingsMemberExpand.top ? "View less ›" : "View full ranking ›";
+        }
+        renderRankingsPanelList(
+          $("rankingsTopSleepersList"),
+          sleepers.slice(0, topLimit).map((row, index) => ({ ...row, rank: index + 1 })),
+          (row) => {
+            const { alpha2 } = resolveCountryForFlag(row.country);
+            const highlight =
+              Boolean(myEmail && row.email && row.email === myEmail) ||
+              Boolean(myName && row.name && row.name === myName);
+            return renderRankingsSleeperRow({
+              rank: row.rank,
+              flag: alpha2ToFlagEmoji(alpha2),
+              label: row.name || "—",
+              points: row.score,
+              highlight,
+            });
+          }
+        );
+
+        const nationsMoreBtn = $("rankingsNationsMoreBtn");
+        const nationsLimit = rankingsMemberExpand.nations ? nations.length : 10;
+        if (nationsMoreBtn) {
+          nationsMoreBtn.hidden = nations.length <= 10;
+          nationsMoreBtn.textContent = rankingsMemberExpand.nations ? "View less ›" : "View full ranking ›";
+        }
+        const nationsGrid = $("rankingsNationsGrid");
+        if (nationsGrid) {
+          nationsGrid.replaceChildren();
+          const nationRows = nations.slice(0, nationsLimit);
+          if (!nationRows.length) {
+            const empty = document.createElement("li");
+            empty.className = "rankings-empty-row";
+            empty.style.gridColumn = "1 / -1";
+            empty.textContent = "No nations ranked yet.";
+            nationsGrid.appendChild(empty);
+          } else {
+            nationRows.forEach((row, index) => {
+              const { alpha2, displayName } = resolveCountryForFlag(row.country);
+              nationsGrid.appendChild(
+                renderRankingsNationCell({
+                  rank: index + 1,
+                  flag: alpha2ToFlagEmoji(alpha2),
+                  label: displayName || row.country || "—",
+                })
+              );
+            });
+          }
+        }
+      }
+
+      function mergeCurrentUserIntoRankings(nations, sleepers, session) {
+        if (!session || isGuestSession(session)) return { nations, sleepers };
+        const email = session.email || "";
+        const users = loadUsers()[email] || {};
+        const name = String(session.name || users.name || "").trim();
+        const country = String(users.country || session.country || "");
+        const score = computeLatestSleepScore(email);
+        if (score == null || score <= 0) return { nations, sleepers };
+
+        let nextSleepers = sleepers.slice();
+        if (findMySleeperIndex(nextSleepers, { email, name, country }) < 0) {
+          nextSleepers.push({ email, name, country, score });
+        }
+        nextSleepers.sort((a, b) => b.score - a.score || String(a.name).localeCompare(String(b.name)));
+        return { nations, sleepers: nextSleepers };
+      }
+
+      async function renderCountryRankingsPage(options = {}) {
+        if (!options.preserveExpand) {
+          rankingsMemberExpand = { around: false, top: false, nations: false };
+        }
+        const guestLayout = $("rankingsGuestLayout");
+        const memberLayout = $("rankingsMemberLayout");
         const guestCta = $("rankingsGuestCta");
         const loadingEl = $("rankingsLoading");
-        const columnsEl = $("rankingsColumns");
-        if (!nationsEl || !sleepersEl) return;
+        if (!guestLayout || !memberLayout) return;
 
         const session = getCurrentSessionOrNull();
         const guest = isGuestSession(session);
         if (guestCta) guestCta.hidden = !guest;
+        guestLayout.hidden = !guest;
+        memberLayout.hidden = guest;
 
         let myCountry = "";
+        let myCountryRaw = "";
         let myName = "";
         let myEmail = "";
         if (session && !guest) {
           myEmail = session.email || "";
           myName = String(session.name || "").trim();
           const u = loadUsers()[myEmail] || {};
-          myCountry = resolveCountryForFlag(String(u.country || session.country || "")).displayName;
+          myCountryRaw = String(u.country || session.country || "");
+          myCountry = resolveCountryForFlag(myCountryRaw).displayName;
         }
 
         if (loadingEl) loadingEl.hidden = false;
-        if (columnsEl) columnsEl.hidden = true;
+        guestLayout.hidden = true;
+        memberLayout.hidden = true;
 
-        const { nations, sleepers } = await fetchGlobalRankings();
+        let { nations, sleepers } = await fetchGlobalRankings();
+        if (session && !guest) {
+          ({ nations, sleepers } = mergeCurrentUserIntoRankings(nations, sleepers, session));
+        }
 
         if (loadingEl) loadingEl.hidden = true;
-        if (columnsEl) columnsEl.hidden = false;
-
-        renderRankingsPanelList(nationsEl, nations, (row, rank) => {
-          const { alpha2, displayName } = resolveCountryForFlag(row.country);
-          const label = displayName || row.country || "—";
-          return renderRankingsListRow({
-            rank,
-            flag: alpha2ToFlagEmoji(alpha2),
-            label,
-            points: null,
-            highlight: Boolean(myCountry && label === myCountry),
+        if (guest) {
+          guestLayout.hidden = false;
+          renderGuestRankingsPage({ nations, sleepers, myCountry, myEmail, myName });
+        } else {
+          memberLayout.hidden = false;
+          renderMemberRankingsPage({
+            nations,
+            sleepers,
+            session,
+            myEmail,
+            myName,
+            myCountryRaw,
           });
-        });
-
-        renderRankingsPanelList(sleepersEl, sleepers, (row, rank) => {
-          const { alpha2 } = resolveCountryForFlag(row.country);
-          const highlight =
-            Boolean(myEmail && row.email && row.email === myEmail) ||
-            Boolean(myName && row.name && row.name === myName);
-          return renderRankingsListRow({
-            rank,
-            flag: alpha2ToFlagEmoji(alpha2),
-            label: row.name || "—",
-            points: row.score,
-            highlight,
-          });
-        });
+        }
       }
 
       function renderSleepScorePage() {
@@ -5258,6 +5783,19 @@
         showPage("auth");
         showAuthFormMode();
         setActiveTab("signup");
+      });
+
+      $("rankingsAroundMoreBtn").addEventListener("click", () => {
+        rankingsMemberExpand.around = !rankingsMemberExpand.around;
+        renderCountryRankingsPage({ preserveExpand: true });
+      });
+      $("rankingsTopMoreBtn").addEventListener("click", () => {
+        rankingsMemberExpand.top = !rankingsMemberExpand.top;
+        renderCountryRankingsPage({ preserveExpand: true });
+      });
+      $("rankingsNationsMoreBtn").addEventListener("click", () => {
+        rankingsMemberExpand.nations = !rankingsMemberExpand.nations;
+        renderCountryRankingsPage({ preserveExpand: true });
       });
 
       $("rankingsBackToScoreBtn").addEventListener("click", () => {
