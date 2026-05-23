@@ -2167,6 +2167,18 @@
         display: none !important;
       }
 
+      .sleep-score-point-display {
+        display: flex;
+        align-items: baseline;
+        justify-content: center;
+        gap: clamp(8px, 2vw, 14px);
+        flex-wrap: wrap;
+      }
+
+      .sleep-score-point-display[hidden] {
+        display: none !important;
+      }
+
       .sleep-score-value {
         margin: 0;
         font-size: clamp(30px, 7vw, 52px);
@@ -2177,6 +2189,14 @@
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
+      }
+
+      .sleep-score-points-label {
+        font-size: clamp(16px, 3.2vw, 24px);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 1;
+        color: rgba(255, 255, 255, 0.72);
       }
 
       .sleep-score-level {
@@ -2295,7 +2315,6 @@
         font-weight: 600;
       }
 
-      .sleep-score-hero--structured .sleep-score-value,
       .sleep-score-hero--structured .sleep-score-level {
         display: none !important;
       }
@@ -2900,7 +2919,10 @@
               decoding="async"
               loading="eager"
             />
-            <p class="sleep-score-value" id="sleepScoreValue">—</p>
+            <div class="sleep-score-point-display" id="sleepScorePointDisplay">
+              <p class="sleep-score-value" id="sleepScoreValue">—</p>
+              <span class="sleep-score-points-label">Points</span>
+            </div>
             <p class="sleep-score-level" id="sleepScoreLevel">Lv.—</p>
             <div class="sleep-score-detail" id="sleepScoreDetail"></div>
           </div>
@@ -4887,11 +4909,14 @@
         return Math.round(Math.min(100, Math.max(1, s)));
       }
 
+      /** Sleep Level 1–5 from Sleep Point (0–19 → Lv.1, never Lv.0). */
       function levelFromSleepScore(score) {
-        if (score >= 90) return 5;
-        if (score >= 70) return 4;
-        if (score >= 50) return 3;
-        if (score >= 30) return 2;
+        const s = Number(score);
+        if (!Number.isFinite(s) || s <= 19) return 1;
+        if (s >= 90) return 5;
+        if (s >= 70) return 4;
+        if (s >= 50) return 3;
+        if (s >= 30) return 2;
         return 1;
       }
 
@@ -5668,14 +5693,15 @@
       function renderSleepScorePage() {
         const session = getCurrentSessionOrNull();
         const valEl = $("sleepScoreValue");
+        const pointDisplay = $("sleepScorePointDisplay");
         const lvlEl = $("sleepScoreLevel");
         const detEl = $("sleepScoreDetail");
         const hero = $("sleepScoreHero");
         const showPlainDetail = (msg) => {
           hideSleepMetricTip();
           if (hero) hero.classList.remove("sleep-score-hero--structured");
+          if (pointDisplay) pointDisplay.hidden = true;
           if (valEl) {
-            valEl.hidden = false;
             valEl.textContent = "—";
           }
           if (lvlEl) {
@@ -5718,13 +5744,11 @@
         }
 
         const displayPoint = score;
-        const displayLevel = isNearZeroSleepHours(hoursSlept) ? displayPoint : levelFromSleepScore(score);
-        const lvForImage = Math.max(1, Math.min(5, displayLevel || 1));
+        const displayLevel = levelFromSleepScore(score);
+        const lvForImage = Math.max(1, Math.min(5, displayLevel));
 
-        if (valEl) {
-          valEl.hidden = true;
-          valEl.textContent = String(displayPoint);
-        }
+        if (pointDisplay) pointDisplay.hidden = false;
+        if (valEl) valEl.textContent = String(displayPoint);
         if (lvlEl) {
           lvlEl.hidden = true;
           lvlEl.textContent = `Lv.${lvForImage}`;

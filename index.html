@@ -828,6 +828,14 @@
         display: none !important;
       }
 
+      .sleep-score-point-display {
+        display: flex;
+        align-items: baseline;
+        justify-content: center;
+        gap: clamp(8px, 2vw, 14px);
+        flex-wrap: wrap;
+      }
+
       .sleep-score-value {
         margin: 0;
         font-size: clamp(30px, 7vw, 52px);
@@ -838,6 +846,14 @@
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
+      }
+
+      .sleep-score-points-label {
+        font-size: clamp(16px, 3.2vw, 24px);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 1;
+        color: rgba(255, 255, 255, 0.72);
       }
 
       .sleep-score-level {
@@ -1353,7 +1369,10 @@
               decoding="async"
               loading="eager"
             />
-            <p class="sleep-score-value" id="sleepScoreValue">—</p>
+            <div class="sleep-score-point-display">
+              <p class="sleep-score-value" id="sleepScoreValue">—</p>
+              <span class="sleep-score-points-label">Points</span>
+            </div>
             <p class="sleep-score-level" id="sleepScoreLevel">Lv.—</p>
             <p class="sleep-score-detail" id="sleepScoreDetail"></p>
           </div>
@@ -2386,11 +2405,14 @@
         return Math.round(Math.min(100, Math.max(1, s)));
       }
 
+      /** Sleep Level 1–5 from Sleep Point (0–19 → Lv.1, never Lv.0). */
       function levelFromSleepScore(score) {
-        if (score >= 90) return 5;
-        if (score >= 70) return 4;
-        if (score >= 50) return 3;
-        if (score >= 30) return 2;
+        const s = Number(score);
+        if (!Number.isFinite(s) || s <= 19) return 1;
+        if (s >= 90) return 5;
+        if (s >= 70) return 4;
+        if (s >= 50) return 3;
+        if (s >= 30) return 2;
         return 1;
       }
 
