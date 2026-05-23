@@ -3179,13 +3179,7 @@
         USERS: "sleepChallenge.users.v2",
         SESSION: "sleepChallenge.session.v2",
         SLEEP: "sleepChallenge.sleep.v2",
-        ACTIVE_TRACKING_BACKUP: "sleepChallenge.activeSession.v1",
       };
-
-      const MAX_SLEEP_TRACKING_MS = 16 * 60 * 60 * 1000;
-      /** Ignore accidental “wakeup” within this window (e.g. screen lock touches). */
-      const MIN_SLEEP_SESSION_MS = 15 * 1000;
-      const WAKEUP_TWO_STEP_MIN_MS = 1000;
 
       /** Reserved session email for guest mode (device-local sleep data only). */
       const GUEST_SESSION_EMAIL = "__guest__@zzzetox.local";
@@ -3208,11 +3202,6 @@
           } catch {
             /* ignore */
           }
-        }
-        try {
-          sessionStorage.removeItem(STORAGE_KEYS.ACTIVE_TRACKING_BACKUP);
-        } catch {
-          /* ignore */
         }
       }
 
@@ -3774,28 +3763,18 @@
 
       function mergeServerSleepBucket(email, serverBucket) {
         if (!serverBucket || typeof serverBucket !== "object") return;
-        const key = normalizeEmail(email);
         const store = loadSleepStore();
-        const local = store[key] || { activeStartAt: null, history: [], sleepGoalHours: null };
-        let serverHist = Array.isArray(serverBucket.history) ? [...serverBucket.history] : [];
+        const local = store[email] || { activeStartAt: null, history: [], sleepGoalHours: null };
+        const serverHist = Array.isArray(serverBucket.history) ? serverBucket.history : [];
         const localHist = Array.isArray(local.history) ? local.history : [];
-        const inProgress = pickActiveStartAt(key, local.activeStartAt, serverBucket.activeStartAt);
-        if (inProgress && serverHist.length > localHist.length) {
-          const last = serverHist[serverHist.length - 1];
-          const dur = last && Number(last.durationMs);
-          if (Number.isFinite(dur) && dur < MIN_SLEEP_SESSION_MS) {
-            serverHist = serverHist.slice(0, -1);
-          }
-        }
         const merged = {
-          activeStartAt: inProgress,
+          activeStartAt: serverBucket.activeStartAt ?? local.activeStartAt ?? null,
           sleepGoalHours:
             serverBucket.sleepGoalHours != null ? serverBucket.sleepGoalHours : local.sleepGoalHours ?? null,
           history: serverHist.length >= localHist.length ? serverHist : localHist,
         };
-        store[key] = merged;
+        store[email] = merged;
         saveSleepStore(store, { skipServerPush: true });
-        if (merged.activeStartAt) writeActiveTrackingBackup(key, merged.activeStartAt);
       }
 
       let sleepServerPushTimer = null;
@@ -3824,113 +3803,9 @@
         }
       }
 
-      async function pushSleepBucketToServerNow(email) {
-        const session = getCurrentSessionOrNull();
-        if (!session || !session.authToken || session.email !== email || isGuestSession(session)) return;
-        const { bucket } = getSleepBucket(email);
-        try {
-          await apiAuthFetch("/api/account/sleep", {
-            method: "PUT",
-            body: JSON.stringify({ sleepBucket: bucket }),
-            keepalive: true,
-          });
-        } catch {
-          /* offline — local data kept */
-        }
-      }
-
-      function writeActiveTrackingBackup(email, activeStartAt) {
-        const key = normalizeEmail(email);
-        try {
-          if (activeStartAt) {
-            const raw = JSON.stringify({ email: key, activeStartAt, savedAt: Date.now() });
-            localStorage.setItem(STORAGE_KEYS.ACTIVE_TRACKING_BACKUP, raw);
-            sessionStorage.setItem(STORAGE_KEYS.ACTIVE_TRACKING_BACKUP, raw);
-          } else {
-            localStorage.removeItem(STORAGE_KEYS.ACTIVE_TRACKING_BACKUP);
-            sessionStorage.removeItem(STORAGE_KEYS.ACTIVE_TRACKING_BACKUP);
-          }
-        } catch {
-          /* private mode / quota */
-        }
-      }
-
-      function readActiveTrackingBackup(email) {
-        const key = normalizeEmail(email);
-        for (const storage of [localStorage, sessionStorage]) {
-          try {
-            const raw = storage.getItem(STORAGE_KEYS.ACTIVE_TRACKING_BACKUP);
-            if (!raw) continue;
-            const parsed = JSON.parse(raw);
-            if (!parsed || normalizeEmail(parsed.email) !== key || !parsed.activeStartAt) continue;
-            const started = new Date(parsed.activeStartAt);
-            if (Number.isNaN(started.getTime())) continue;
-            if (Date.now() - started.getTime() >= MAX_SLEEP_TRACKING_MS) continue;
-            return parsed.activeStartAt;
-          } catch {
-            /* try next storage */
-          }
-        }
-        return null;
-      }
-
-      function pickActiveStartAt(email, localAt, serverAt) {
-        const key = normalizeEmail(email);
-        return localAt || readActiveTrackingBackup(key) || serverAt || null;
-      }
-
-      function getActiveTrackingStart(email) {
-        const { bucket } = getSleepBucket(email);
-        return pickActiveStartAt(email, bucket.activeStartAt, null);
-      }
-
-      function syncActiveTrackingIntoBucket(email) {
-        const key = normalizeEmail(email);
-        const active = getActiveTrackingStart(email);
-        if (!active) return null;
-        const { store, bucket } = getSleepBucket(email);
-        if (!bucket.activeStartAt) {
-          bucket.activeStartAt = active;
-          store[key] = bucket;
-          saveSleepStore(store, { skipServerPush: true });
-        }
-        writeActiveTrackingBackup(key, active);
-        return active;
-      }
-
-      function restoreActiveTrackingIfNeeded(email) {
-        if (!email) return;
-        syncActiveTrackingIntoBucket(email);
-      }
-
-      function hasActiveSleepSession(email) {
-        if (!email) return false;
-        return Boolean(getActiveTrackingStart(email));
-      }
-
-      function persistSleepTrackingState() {
-        const session = getCurrentSessionOrNull();
-        if (!session?.email) return;
-        const active = syncActiveTrackingIntoBucket(session.email);
-        if (!active) return;
-        const { store, key } = getSleepBucket(session.email);
-        writeActiveTrackingBackup(key, active);
-        try {
-          localStorage.setItem(STORAGE_KEYS.SLEEP, JSON.stringify(store));
-        } catch {
-          /* ignore */
-        }
-        void pushSleepBucketToServerNow(session.email);
-      }
-
       async function pullSleepBucketFromServer() {
         const session = getCurrentSessionOrNull();
         if (!session || !session.authToken || isGuestSession(session)) return;
-        restoreActiveTrackingIfNeeded(session.email);
-        if (hasActiveSleepSession(session.email)) {
-          await pushSleepBucketToServerNow(session.email);
-          return;
-        }
         try {
           const { res, data } = await apiAuthFetch("/api/account/sleep");
           if (res.ok && data.ok && data.sleepBucket) {
@@ -4014,7 +3889,6 @@
         wakeup: "Are U Awoke?",
       };
       let clickProgress = { bedtime: 2, wakeup: 0 };
-      let twoStepArmedAt = { bedtime: 0, wakeup: 0 };
 
       function setButtonCounter(kind, remaining, shouldBlink) {
         const buttonId = kind === "bedtime" ? "bedtimeBtn" : "wakeupBtn";
@@ -4114,9 +3988,9 @@
       let selectedGoalHours = null;
 
       function showPage(pageName) {
-        if (pageName !== "tracker" && pageName !== "progress" && hasActiveSleepSession(getCurrentSessionOrNull()?.email)) {
-          toast("ok", "Press Wakeup to finish bedtime tracking before leaving the sleep tracker.");
-          pageName = "tracker";
+        if (pageName !== "tracker" && pageName !== "progress" && isSleepTrackingActive()) {
+          stopSleepTrackingBecausePageLeft();
+          return;
         }
         $("authPage").hidden = pageName !== "auth";
         $("goalPage").hidden = pageName !== "goal";
@@ -4276,7 +4150,6 @@
       function resolveLoggedInPage(preferredPage) {
         const session = getCurrentSessionOrNull();
         if (!session) return "auth";
-        if (hasActiveSleepSession(session.email)) return "tracker";
         if (preferredPage === "tracker" && !hasSleepGoal(session.email)) return "goal";
         return preferredPage;
       }
@@ -4334,9 +4207,9 @@
       function saveSleepGoal(hours) {
         const session = getCurrentSessionOrNull();
         if (!session) return;
-        const { store, bucket, key } = getSleepBucket(session.email);
+        const { store, bucket } = getSleepBucket(session.email);
         bucket.sleepGoalHours = hours;
-        store[key] = bucket;
+        store[session.email] = bucket;
         saveSleepStore(store);
       }
 
@@ -4415,6 +4288,44 @@
         }
       }
 
+      function isTrackerPageVisible() {
+        const p = $("trackerPage");
+        return Boolean(p && !p.hidden);
+      }
+
+      function bumpWakeupFromAlternateInput(mode) {
+        if (!isTrackerPageVisible()) return;
+        const session = getCurrentSessionOrNull();
+        if (!session) return;
+        if (!getSleepBucket(session.email).bucket.activeStartAt) return;
+        const wakeupBtn = $("wakeupBtn");
+        if (!wakeupBtn || wakeupBtn.disabled) return;
+        const coarse = window.matchMedia("(pointer: coarse)").matches;
+        if (mode === "touch" && !coarse) return;
+        if (mode === "key" && coarse) return;
+        handleTwoStepClick("wakeup", recordWakeup);
+      }
+
+      function onGlobalSleepWakeupKey(ev) {
+        if (!isTrackerPageVisible()) return;
+        if (ev.repeat) return;
+        if (ev.key === "Tab") return;
+        if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+        const target = ev.target;
+        if (target instanceof Element && target.closest("input, textarea, select, [contenteditable='true']")) return;
+        if (target instanceof Element && target.closest("#wakeupBtn")) return;
+        bumpWakeupFromAlternateInput("key");
+      }
+
+      function onGlobalSleepWakeupTouch(ev) {
+        if (!isTrackerPageVisible()) return;
+        if (!window.matchMedia("(pointer: coarse)").matches) return;
+        const target = ev.target;
+        if (!(target instanceof Element)) return;
+        if (target.closest("#wakeupBtn")) return;
+        bumpWakeupFromAlternateInput("touch");
+      }
+
       function updateActionAvailability() {
         const session = getCurrentSessionOrNull();
         const bedtimeBtn = $("bedtimeBtn");
@@ -4449,16 +4360,10 @@
       }
 
       function getSleepBucket(email) {
-        const key = normalizeEmail(email);
         const store = loadSleepStore();
-        const legacy = String(email || "").trim();
-        if (legacy && legacy !== key && store[legacy]) {
-          if (!store[key]) store[key] = store[legacy];
-          delete store[legacy];
-        }
-        const bucket = store[key] || { activeStartAt: null, history: [], sleepGoalHours: null };
+        const bucket = store[email] || { activeStartAt: null, history: [], sleepGoalHours: null };
         if (bucket.sleepGoalHours === undefined) bucket.sleepGoalHours = null;
-        return { store, bucket, key };
+        return { store, bucket };
       }
 
       function getCollectedDaysCount(email) {
@@ -4607,6 +4512,9 @@
       /** Optional “minus 20 minutes” correction (checkbox on tracker). */
       const MINUS20_MS = 20 * 60 * 1000;
 
+      /** Bedtime tracking auto-ends at this duration (no wakeup button press). */
+      const MAX_SLEEP_TRACKING_MS = 16 * 60 * 60 * 1000;
+
       function computeFinalSleepDurationMs(rawMs, minus20Checked) {
         const raw = Math.max(0, Number(rawMs) || 0);
         if (!minus20Checked) return raw;
@@ -4632,22 +4540,12 @@
         const session = getCurrentSessionOrNull();
         if (!session) return false;
 
-        syncActiveTrackingIntoBucket(session.email);
-        const { store, bucket, key } = getSleepBucket(session.email);
+        const { store, bucket } = getSleepBucket(session.email);
         if (!bucket.activeStartAt) return false;
 
         const start = new Date(bucket.activeStartAt);
         const end = endDate instanceof Date ? endDate : new Date(endDate);
         const rawDurationMs = Math.max(0, end.getTime() - start.getTime());
-        if (!auto && rawDurationMs < MIN_SLEEP_SESSION_MS) {
-          toast(
-            "ok",
-            "Bedtime is still running — wait at least 15 seconds before wakeup, or keep sleeping."
-          );
-          clickProgress.wakeup = 2;
-          applyButtonCounterState();
-          return false;
-        }
         const minus20Checked = Boolean($("minus20Correction") && $("minus20Correction").checked);
         const durationMs = computeFinalSleepDurationMs(rawDurationMs, minus20Checked);
         const durationText = formatDuration(durationMs);
@@ -4659,8 +4557,7 @@
           durationText,
         });
         bucket.activeStartAt = null;
-        store[key] = bucket;
-        writeActiveTrackingBackup(key, null);
+        store[session.email] = bucket;
         saveSleepStore(store);
         renderSleepMeta();
         if (auto) {
@@ -4680,45 +4577,42 @@
       function isSleepTrackingActive() {
         const session = getCurrentSessionOrNull();
         if (!session) return false;
-        return hasActiveSleepSession(session.email);
+        return Boolean(getSleepBucket(session.email).bucket.activeStartAt);
       }
 
-      function onWindowPageHide() {
-        hideGuestDeviceNotice();
-        persistSleepTrackingState();
+      /** Stop bedtime tracking when the user intentionally leaves (other window/app or in-app screen). */
+      function stopSleepTrackingBecausePageLeft() {
+        if (!isSleepTrackingActive()) return false;
+        return completeSleepTracking(new Date(), { auto: true, leftPage: true });
       }
 
-      function onSleepTrackingVisibilityChange() {
+      function onDocumentVisibilityChange() {
         if (document.visibilityState === "hidden") {
-          persistSleepTrackingState();
+          hideGuestDeviceNotice();
           return;
         }
-        if (document.visibilityState !== "visible") return;
-        const session = getCurrentSessionOrNull();
-        if (!session?.email) return;
-        restoreActiveTrackingIfNeeded(session.email);
-        renderSleepMeta();
-        if (session.authToken && !isGuestSession(session)) {
-          void pullSleepBucketFromServer().then(() => {
-            restoreActiveTrackingIfNeeded(session.email);
-            renderSleepMeta();
-            setButtonPriorityStyles();
-          });
-        }
+        if (isSleepTrackingActive()) renderSleepMeta();
       }
 
-      function onSleepTrackingPageShow() {
-        const session = getCurrentSessionOrNull();
-        if (!session?.email) return;
-        restoreActiveTrackingIfNeeded(session.email);
-        renderSleepMeta();
+      /** Tab/window close — not screen lock (lock usually only hides visibility, no pagehide). */
+      function onWindowPageHide(ev) {
+        hideGuestDeviceNotice();
+        if (ev.persisted) return;
+        if (!isTrackerPageVisible() || !isSleepTrackingActive()) return;
+        stopSleepTrackingBecausePageLeft();
+      }
+
+      /** Another app/window took focus while this tab stays visible (desktop). */
+      function onWindowBlurWhileTracking() {
+        if (!isTrackerPageVisible() || !isSleepTrackingActive()) return;
+        if (document.visibilityState !== "visible") return;
+        stopSleepTrackingBecausePageLeft();
       }
 
       function maybeAutoStopSleepTracking() {
         const session = getCurrentSessionOrNull();
         if (!session) return false;
 
-        syncActiveTrackingIntoBucket(session.email);
         const { bucket } = getSleepBucket(session.email);
         if (!bucket.activeStartAt) return false;
 
@@ -4744,13 +4638,13 @@
 
         if (maybeAutoStopSleepTracking()) return;
 
-        const activeIso = syncActiveTrackingIntoBucket(session.email);
-        const active = activeIso ? new Date(activeIso) : null;
+        const { bucket } = getSleepBucket(session.email);
+        const active = bucket.activeStartAt ? new Date(bucket.activeStartAt) : null;
 
         if (active) {
           const elapsedMs = Date.now() - active.getTime();
           timerEl.textContent = formatDuration(elapsedMs);
-          metaEl.textContent = `Bedtime started: ${active.toLocaleString()} | You can lock the screen or turn off the device while sleeping. Press wakeup when you are done, or tracking ends after 16 hours.`;
+          metaEl.textContent = `Bedtime started: ${active.toLocaleString()} | Screen lock is OK. Tracking stops if you open another app/window or leave this page.`;
         } else {
           timerEl.textContent = "00:00:00";
           const recent = bucket.history[bucket.history.length - 1];
@@ -4763,26 +4657,18 @@
         updateActionAvailability();
       }
 
-      async function startBedtime() {
+      function startBedtime() {
         const session = getCurrentSessionOrNull();
         if (!session) return toast("danger", "Please log in first.");
 
-        const { store, bucket, key } = getSleepBucket(session.email);
+        const { store, bucket } = getSleepBucket(session.email);
         if (bucket.activeStartAt) return toast("danger", "Bedtime tracking is already active. Press wakeup to end it.");
 
         bucket.activeStartAt = nowISO();
-        store[key] = bucket;
-        writeActiveTrackingBackup(key, bucket.activeStartAt);
+        store[session.email] = bucket;
         saveSleepStore(store);
         renderSleepMeta();
-        if (session.authToken && !isGuestSession(session)) {
-          try {
-            await pushSleepBucketToServerNow(session.email);
-          } catch {
-            /* offline — local backup still active */
-          }
-        }
-        toast("ok", "Bedtime tracking started. You can lock the screen or turn off the device until you press wakeup.");
+        toast("ok", "Bedtime tracking started. Screen lock is OK — press wakeup when you are done.");
       }
 
       function recordWakeup() {
@@ -4802,15 +4688,11 @@
 
         if (clickProgress[kind] === 2) {
           clickProgress[kind] = 1;
-          twoStepArmedAt[kind] = Date.now();
           if (clickProgress[opposite] === 1) clickProgress[opposite] = 2;
           applyButtonCounterState();
           return;
         }
         if (clickProgress[kind] === 1) {
-          if (kind === "wakeup" && Date.now() - twoStepArmedAt.wakeup < WAKEUP_TWO_STEP_MIN_MS) {
-            return;
-          }
           clickProgress[kind] = 0;
           applyButtonCounterState();
           actionFn();
@@ -6129,10 +6011,11 @@
       $("bedtimeBtn").addEventListener("click", () => handleTwoStepClick("bedtime", startBedtime));
       $("wakeupBtn").addEventListener("click", () => handleTwoStepClick("wakeup", recordWakeup));
 
+      window.addEventListener("keydown", onGlobalSleepWakeupKey, true);
+      window.addEventListener("touchstart", onGlobalSleepWakeupTouch, { capture: true, passive: true });
+      document.addEventListener("visibilitychange", onDocumentVisibilityChange);
       window.addEventListener("pagehide", onWindowPageHide);
-      window.addEventListener("pageshow", onSleepTrackingPageShow);
-      document.addEventListener("visibilitychange", onSleepTrackingVisibilityChange);
-      window.addEventListener("freeze", persistSleepTrackingState);
+      window.addEventListener("blur", onWindowBlurWhileTracking);
 
       document.addEventListener(
         "click",
@@ -6167,7 +6050,6 @@
       installZzzetoxEmailValidation();
       const bootSession = getCurrentSessionOrNull();
       if (bootSession && bootSession.email) {
-        restoreActiveTrackingIfNeeded(bootSession.email);
         refreshSessionUI(resolveLoggedInPage("tracker"));
         setButtonPriorityStyles();
         renderSleepMeta();
@@ -6185,15 +6067,6 @@
 
       window.setInterval(() => {
         setButtonPriorityStyles();
-        const tickSession = getCurrentSessionOrNull();
-        if (tickSession?.email && hasActiveSleepSession(tickSession.email)) {
-          syncActiveTrackingIntoBucket(tickSession.email);
-          try {
-            localStorage.setItem(STORAGE_KEYS.SLEEP, JSON.stringify(loadSleepStore()));
-          } catch {
-            /* ignore */
-          }
-        }
         renderSleepMeta();
       }, 1000);
 
