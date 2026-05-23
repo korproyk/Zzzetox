@@ -4580,28 +4580,23 @@
         return Boolean(getSleepBucket(session.email).bucket.activeStartAt);
       }
 
-      /** Stop bedtime tracking when the user leaves this tab, app, or in-app screen. */
+      /** Stop bedtime tracking when the user switches to another app/window (not screen lock). */
       function stopSleepTrackingBecausePageLeft() {
         if (!isSleepTrackingActive()) return false;
         return completeSleepTracking(new Date(), { auto: true, leftPage: true });
       }
 
-      function handleAppLeftWhileOpen() {
-        hideGuestDeviceNotice();
-        stopSleepTrackingBecausePageLeft();
-      }
-
-      function onDocumentVisibilityChange() {
-        if (document.visibilityState === "hidden") handleAppLeftWhileOpen();
-      }
-
       function onWindowPageHide() {
-        handleAppLeftWhileOpen();
+        hideGuestDeviceNotice();
       }
 
+      /**
+       * Screen lock / device off sets visibility to hidden but should not end sleep tracking.
+       * Blur while the page is still "visible" usually means another window took focus (desktop).
+       */
       function onWindowBlurWhileTracking() {
         if (document.visibilityState !== "hidden" && isSleepTrackingActive()) {
-          handleAppLeftWhileOpen();
+          stopSleepTrackingBecausePageLeft();
         }
       }
 
@@ -4640,7 +4635,7 @@
         if (active) {
           const elapsedMs = Date.now() - active.getTime();
           timerEl.textContent = formatDuration(elapsedMs);
-          metaEl.textContent = `Bedtime started: ${active.toLocaleString()} | Stay on this screen — tracking stops if you switch tabs, apps, or windows.`;
+          metaEl.textContent = `Bedtime started: ${active.toLocaleString()} | You can lock the screen or turn off the device while sleeping. Tracking stops if you leave this flow or switch to another app on desktop.`;
         } else {
           timerEl.textContent = "00:00:00";
           const recent = bucket.history[bucket.history.length - 1];
@@ -4664,7 +4659,7 @@
         store[session.email] = bucket;
         saveSleepStore(store);
         renderSleepMeta();
-        toast("ok", "Bedtime tracking started. Stay on this screen until you press wakeup.");
+        toast("ok", "Bedtime tracking started. You can lock the screen or turn off the device until you press wakeup.");
       }
 
       function recordWakeup() {
@@ -6009,7 +6004,6 @@
 
       window.addEventListener("keydown", onGlobalSleepWakeupKey, true);
       window.addEventListener("touchstart", onGlobalSleepWakeupTouch, { capture: true, passive: true });
-      document.addEventListener("visibilitychange", onDocumentVisibilityChange);
       window.addEventListener("pagehide", onWindowPageHide);
       window.addEventListener("blur", onWindowBlurWhileTracking);
 
