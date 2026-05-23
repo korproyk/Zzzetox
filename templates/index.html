@@ -2694,7 +2694,7 @@
               </div>
               <div class="field">
                 <label for="signupAge">Age (Optional)</label>
-                <input id="signupAge" name="age" type="number" placeholder="e.g., 16" min="13" max="40" />
+                <input id="signupAge" name="age" type="number" placeholder="10–24" min="10" max="24" />
               </div>
             </div>
 
@@ -3183,6 +3183,10 @@
 
       /** Reserved session email for guest mode (device-local sleep data only). */
       const GUEST_SESSION_EMAIL = "__guest__@zzzetox.local";
+
+      const MIN_USER_AGE = 10;
+      const MAX_USER_AGE = 24;
+      const DEFAULT_USER_AGE = 18;
 
       /** Previous localStorage keys (cleared on reset / migration). */
       const LEGACY_STORAGE_KEYS = [
@@ -4161,7 +4165,7 @@
 
       function getSleepGoalOptionsForAge(age) {
         const a = Number(age);
-        if (Number.isFinite(a) && a >= 13 && a <= 17) return [8, 9, 10];
+        if (Number.isFinite(a) && a >= MIN_USER_AGE && a <= 17) return [8, 9, 10];
         return [7, 8, 9];
       }
 
@@ -4171,12 +4175,12 @@
         const age = getUserAgeForGoal(session);
         const options = getSleepGoalOptionsForAge(age);
         const hint = $("goalAgeHint");
-        if (Number.isFinite(Number(age)) && age >= 13 && age <= 17) {
-          hint.textContent = "Ages 13–17: choose 8, 9, or 10 hours.";
-        } else if (Number.isFinite(Number(age)) && age >= 18 && age <= 40) {
-          hint.textContent = "Ages 18–40: choose 7, 8, or 9 hours.";
+        if (Number.isFinite(Number(age)) && age >= MIN_USER_AGE && age <= 17) {
+          hint.textContent = `Ages ${MIN_USER_AGE}–17: choose 8, 9, or 10 hours.`;
+        } else if (Number.isFinite(Number(age)) && age >= 18 && age <= MAX_USER_AGE) {
+          hint.textContent = `Ages 18–${MAX_USER_AGE}: choose 7, 8, or 9 hours.`;
         } else {
-          hint.textContent = "Choose your nightly sleep goal (default: ages 18–40).";
+          hint.textContent = `Choose your nightly sleep goal (default: ages 18–${MAX_USER_AGE}).`;
         }
         const wrap = $("goalOptions");
         wrap.replaceChildren();
@@ -4232,8 +4236,10 @@
         if (value === "" || value === null || value === undefined) return { ok: true, value: null };
         const n = Number(value);
         if (!Number.isFinite(n)) return { ok: false, message: "Please enter age as a number." };
-        if (n < 13 || n > 40) return { ok: false, message: "Age must be between 13 and 40." };
-        return { ok: true, value: n };
+        if (n < MIN_USER_AGE || n > MAX_USER_AGE) {
+          return { ok: false, message: `Age must be between ${MIN_USER_AGE} and ${MAX_USER_AGE}.` };
+        }
+        return { ok: true, value: Math.trunc(n) };
       }
 
       /** Width ratio: 8pm–2am bedtime emphasis (3:1), 5am–11:59am wakeup (1:3), else even (1:1). */
@@ -4879,7 +4885,10 @@
 
       /** Recommended bedtime (local clock, same scale as bedAtToSleepHours) by age; optional age defaults to 16. */
       function recommendedBedtimeSleepHours(age) {
-        const a = age == null || !Number.isFinite(Number(age)) ? 16 : Math.min(40, Math.max(13, Number(age)));
+        const a =
+          age == null || !Number.isFinite(Number(age))
+            ? DEFAULT_USER_AGE
+            : Math.min(MAX_USER_AGE, Math.max(MIN_USER_AGE, Number(age)));
         if (a <= 15) return 21.5;
         if (a <= 18) return 22;
         if (a <= 22) return 22.5;
@@ -4996,14 +5005,14 @@
        */
       function sleepRecommendationCohortPhrase(age) {
         if (age == null || age === "" || !Number.isFinite(Number(age))) {
-          return "Add your age at signup to see whether you're Teenager, Young Adult, or Adult here.";
+          return "Add your age at signup to see your sleep cohort here.";
         }
         const a = Math.floor(Number(age));
+        if (a >= 10 && a <= 13) return 'You\'re in the "School age" band now (ages 10–13).';
         if (a >= 14 && a <= 17) return 'You\'re in "Teenager" now.';
-        if (a >= 18 && a <= 25) return 'You\'re in "Young Adult" now.';
-        if (a >= 26 && a <= 64) return 'You\'re in "Adult" now.';
-        if (a < 14) return "You're not in Teenager yet (Teenager is ages 14–17).";
-        return "You're older than this page's Adult band (26–64).";
+        if (a >= 18 && a <= MAX_USER_AGE) return 'You\'re in "Young Adult" now.';
+        if (a < MIN_USER_AGE) return `This app is for ages ${MIN_USER_AGE}–${MAX_USER_AGE}.`;
+        return `This app is for ages ${MIN_USER_AGE}–${MAX_USER_AGE}.`;
       }
 
       function renderSleepRecommendationPage() {
@@ -5245,7 +5254,7 @@
 
       function sleepScoreAgeBaselineNote(age) {
         if (age == null || !Number.isFinite(Number(age))) {
-          return "Age not set - use 16 year baseline";
+          return `Age not set - use ${DEFAULT_USER_AGE} year baseline`;
         }
         return "";
       }

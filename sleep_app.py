@@ -52,6 +52,11 @@ from sleep_scoring import compute_latest_sleep_score
 
 logger = logging.getLogger(__name__)
 
+MIN_USER_AGE = 10
+MAX_USER_AGE = 24
+GUEST_EMAIL = "__guest__@zzzetox.local"
+COUNTRY_ANONYMOUS = "ANONYMOUS"
+
 ROOT = Path(__file__).resolve().parent
 TEMPLATES_DIR = ROOT / "templates"
 STATIC_DIR = ROOT / "static"
@@ -242,6 +247,14 @@ def api_auth_signup():
     country = str(body.get("country", "")).strip()
     password_hash = str(body.get("passwordHash", "")).strip()
     age = _parse_age(body.get("age"))
+    try:
+        age = _validate_user_age(age)
+    except ValueError as exc:
+        if str(exc) == "age_out_of_range":
+            return jsonify(
+                {"ok": False, "error": f"Age must be between {MIN_USER_AGE} and {MAX_USER_AGE}."}
+            ), 400
+        raise
 
     if not email:
         return jsonify({"ok": False, "error": "Email is required."}), 400
@@ -337,6 +350,14 @@ def api_auth_migrate_local():
     country = str(body.get("country", "")).strip()
     password_hash = str(body.get("passwordHash", "")).strip()
     age = _parse_age(body.get("age"))
+    try:
+        age = _validate_user_age(age)
+    except ValueError as exc:
+        if str(exc) == "age_out_of_range":
+            return jsonify(
+                {"ok": False, "error": f"Age must be between {MIN_USER_AGE} and {MAX_USER_AGE}."}
+            ), 400
+        raise
 
     if not email or not password_hash or not name:
         return jsonify({"ok": False, "error": "Invalid migration payload."}), 400
@@ -422,6 +443,15 @@ def _parse_age(age) -> int | None:
         return int(float(age))
     except (TypeError, ValueError):
         return None
+
+
+def _validate_user_age(age: int | None) -> int | None:
+    """Return age when in allowed range; None if omitted; raise ValueError if out of range."""
+    if age is None:
+        return None
+    if age < MIN_USER_AGE or age > MAX_USER_AGE:
+        raise ValueError("age_out_of_range")
+    return age
 
 
 def recommended_sleep_range_hours(age: int | None) -> tuple[float, float]:
@@ -932,10 +962,6 @@ def _openai_feedback(payload: dict) -> str | None:
     except TimeoutError:
         logger.warning("OpenAI: request timed out after 45s")
         return None
-
-
-GUEST_EMAIL = "__guest__@zzzetox.local"
-COUNTRY_ANONYMOUS = "ANONYMOUS"
 
 
 def _norm_country_key(country: str) -> str:

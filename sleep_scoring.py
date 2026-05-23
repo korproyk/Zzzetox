@@ -30,11 +30,16 @@ def bed_at_to_sleep_hours(iso: str) -> float | None:
     return h
 
 
+MIN_USER_AGE = 10
+MAX_USER_AGE = 24
+DEFAULT_USER_AGE = 18
+
+
 def recommended_bedtime_sleep_hours(age: int | None) -> float:
     if age is None:
-        a = 16
+        a = DEFAULT_USER_AGE
     else:
-        a = min(40, max(13, int(age)))
+        a = min(MAX_USER_AGE, max(MIN_USER_AGE, int(age)))
     if a <= 15:
         return 21.5
     if a <= 18:
