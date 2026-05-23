@@ -2920,7 +2920,7 @@
               loading="eager"
             />
             <div class="sleep-score-point-display" id="sleepScorePointDisplay">
-              <p class="sleep-score-value" id="sleepScoreValue">—</p>
+            <p class="sleep-score-value" id="sleepScoreValue">—</p>
               <span class="sleep-score-points-label">Points</span>
             </div>
             <p class="sleep-score-level" id="sleepScoreLevel">Lv.—</p>
@@ -2982,9 +2982,9 @@
           <header class="rankings-header">
             <button type="button" class="home-btn rankings-header-back" id="rankingsBackToScoreBtn" aria-label="Back to sleep point and level">
               <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
-                <path fill="#ffffff" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-              </svg>
-            </button>
+                  <path fill="#ffffff" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                </svg>
+              </button>
             <h2 class="rankings-header-title" id="countryRankingsPageTitle">Ranking</h2>
             <span class="rankings-header-stars" aria-hidden="true">
               <span>✦</span><span>✦</span><span>✦</span>
@@ -3000,7 +3000,7 @@
             </div>
             <div class="rankings-guest-cta-actions">
               <button type="button" class="rankings-signup-btn" id="rankingsSignupBtn">Sign up and join ›</button>
-            </div>
+          </div>
           </section>
           <p class="rankings-loading" id="rankingsLoading" hidden>Loading rankings…</p>
 
@@ -4564,7 +4564,7 @@
           if (leftPage) {
             toast("ok", `Tracking stopped because you left this screen. Recorded: ${durationText}`);
           } else {
-            toast("ok", `Tracking stopped automatically after 16 hours. Recorded: ${durationText}`);
+          toast("ok", `Tracking stopped automatically after 16 hours. Recorded: ${durationText}`);
           }
         } else {
           toast("ok", `Wakeup recorded! Total sleep time: ${durationText}`);
@@ -4591,22 +4591,16 @@
           hideGuestDeviceNotice();
           return;
         }
-        if (isSleepTrackingActive()) renderSleepMeta();
+        refreshSleepTimerIfTracking();
       }
 
-      /** Tab/window close — not screen lock (lock usually only hides visibility, no pagehide). */
-      function onWindowPageHide(ev) {
+      function refreshSleepTimerIfTracking() {
+        if (!isSleepTrackingActive()) return;
+        renderSleepMeta();
+      }
+
+      function onWindowPageHide() {
         hideGuestDeviceNotice();
-        if (ev.persisted) return;
-        if (!isTrackerPageVisible() || !isSleepTrackingActive()) return;
-        stopSleepTrackingBecausePageLeft();
-      }
-
-      /** Another app/window took focus while this tab stays visible (desktop). */
-      function onWindowBlurWhileTracking() {
-        if (!isTrackerPageVisible() || !isSleepTrackingActive()) return;
-        if (document.visibilityState !== "visible") return;
-        stopSleepTrackingBecausePageLeft();
       }
 
       function maybeAutoStopSleepTracking() {
@@ -4644,7 +4638,7 @@
         if (active) {
           const elapsedMs = Date.now() - active.getTime();
           timerEl.textContent = formatDuration(elapsedMs);
-          metaEl.textContent = `Bedtime started: ${active.toLocaleString()} | Screen lock is OK. Tracking stops if you open another app/window or leave this page.`;
+          metaEl.textContent = `Bedtime started: ${active.toLocaleString()} | Screen lock and PC sleep are OK. Tracking ends when you press wakeup or leave this tracker screen.`;
         } else {
           timerEl.textContent = "00:00:00";
           const recent = bucket.history[bucket.history.length - 1];
@@ -5468,7 +5462,7 @@
 
       function renderRankingsPanelList(listEl, rows, renderRow, emptyText) {
         if (!listEl) return;
-        listEl.replaceChildren();
+          listEl.replaceChildren();
         if (!rows.length) {
           const empty = document.createElement("li");
           empty.className = "rankings-empty-row";
@@ -5611,7 +5605,7 @@
           nationsGrid.replaceChildren();
           const nationRows = nations.slice(0, nationsLimit);
           if (!nationRows.length) {
-            const empty = document.createElement("li");
+          const empty = document.createElement("li");
             empty.className = "rankings-empty-row";
             empty.style.gridColumn = "1 / -1";
             empty.textContent = "No nations ranked yet.";
@@ -6015,7 +6009,7 @@
       window.addEventListener("touchstart", onGlobalSleepWakeupTouch, { capture: true, passive: true });
       document.addEventListener("visibilitychange", onDocumentVisibilityChange);
       window.addEventListener("pagehide", onWindowPageHide);
-      window.addEventListener("blur", onWindowBlurWhileTracking);
+      window.addEventListener("focus", refreshSleepTimerIfTracking);
 
       document.addEventListener(
         "click",
