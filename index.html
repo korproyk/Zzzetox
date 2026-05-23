@@ -1193,7 +1193,7 @@
               </div>
               <div class="field">
                 <label for="signupAge">Age (Optional)</label>
-                <input id="signupAge" name="age" type="number" placeholder="e.g., 16" min="13" max="40" />
+                <input id="signupAge" name="age" type="number" placeholder="10–24" min="10" max="24" />
               </div>
             </div>
 
@@ -1967,7 +1967,7 @@
         if (value === "" || value === null || value === undefined) return { ok: true, value: null };
         const n = Number(value);
         if (!Number.isFinite(n)) return { ok: false, message: "Please enter age as a number." };
-        if (n < 13 || n > 40) return { ok: false, message: "Age must be between 13 and 40." };
+        if (n < 10 || n > 24) return { ok: false, message: "Age must be between 10 and 24." };
         return { ok: true, value: n };
       }
 
@@ -2374,7 +2374,7 @@
 
       /** Recommended bedtime (local clock, same scale as bedAtToSleepHours) by age; optional age defaults to 16. */
       function recommendedBedtimeSleepHours(age) {
-        const a = age == null || !Number.isFinite(Number(age)) ? 16 : Math.min(40, Math.max(13, Number(age)));
+        const a = age == null || !Number.isFinite(Number(age)) ? 18 : Math.min(24, Math.max(10, Number(age)));
         if (a <= 15) return 21.5;
         if (a <= 18) return 22;
         if (a <= 22) return 22.5;
