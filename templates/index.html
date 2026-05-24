@@ -1021,30 +1021,28 @@
         height: 11px;
         border-radius: 50%;
         border: 2px solid var(--brand);
-        background: transparent;
+        background: var(--brand);
         transition: background 150ms ease, border-color 150ms ease;
       }
 
       .sleep-btn#wakeupBtn .sleep-dot {
         border-color: #fbbf24;
-      }
-
-      .sleep-dot.filled {
-        background: var(--brand);
-      }
-
-      .sleep-btn#wakeupBtn .sleep-dot.filled {
         background: #fbbf24;
+      }
+
+      .sleep-dot.empty {
+        background: transparent;
       }
 
       .sleep-btn.deemphasis .sleep-dot {
         width: 8px;
         height: 8px;
         border-color: rgba(255,255,255,0.28);
+        background: rgba(255,255,255,0.28);
       }
 
-      .sleep-btn.deemphasis .sleep-dot.filled {
-        background: rgba(255,255,255,0.28);
+      .sleep-btn.deemphasis .sleep-dot.empty {
+        background: transparent;
       }
 
       .sleep-dot.blink {
@@ -1162,8 +1160,8 @@
       }
 
       @keyframes dotBlink {
-        0%, 100% { border-color: var(--brand); }
-        50% { border-color: #ff4d4d; }
+        0%, 100% { background: var(--brand); }
+        50% { background: transparent; }
       }
 
       .sleep-btn#wakeupBtn .sleep-dot.blink {
@@ -1171,8 +1169,8 @@
       }
 
       @keyframes dotBlinkWakeup {
-        0%, 100% { border-color: #fbbf24; }
-        50% { border-color: #ff4d4d; }
+        0%, 100% { background: #fbbf24; }
+        50% { background: transparent; }
       }
 
       .goal-page {
@@ -4060,11 +4058,12 @@
       function setButtonCounter(kind, remaining, shouldBlink) {
         const buttonId = kind === "bedtime" ? "bedtimeBtn" : "wakeupBtn";
         const btn = $(buttonId);
-        const clicksCompleted = remaining === 1 ? 1 : 0;
+        const emptyCount = Math.max(0, 2 - remaining);
+        const clicksCompleted = emptyCount;
         const dots = btn.querySelectorAll(".sleep-dot");
         dots.forEach((dot, i) => {
-          dot.classList.toggle("filled", i < clicksCompleted);
-          dot.classList.toggle("blink", shouldBlink && i === clicksCompleted);
+          dot.classList.toggle("empty", i < emptyCount);
+          dot.classList.toggle("blink", shouldBlink && i === emptyCount);
         });
         const dotsWrap = btn.querySelector(".sleep-btn-dots");
         if (dotsWrap) {
