@@ -6,9 +6,9 @@ and POST /api/validate-nickname (nickname policy).
 Sleep level images: `level1.png`–`level5.png` in the same folder as this file are served at
 `/static/images/levelN.png` (see `sleep_level_images_dispatch`); optional fallback in `static/images/`.
 
-Time-based Start Bedtime / Wake Up button *widths* (3:1, 1:3, 1:1) live in the front end:
+Start Bedtime / Wake Up button widths (3:1 vs 1:3) follow sleep state in the front end:
   templates/index.html — CSS `.sleep-controls` / `.bedtime-priority` / `.wakeup-priority`
-  and JavaScript `getPriorityWindow()` + `setButtonPriorityStyles()`.
+  and JavaScript `setButtonPriorityStyles()`.
 
 Login/signup password eye toggle (click to show/hide) is finalized in this file: see
 `_inject_index_password_toggle` and `_INDEX_PASSWORD_TOGGLE_SCRIPT`.
