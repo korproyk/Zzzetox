@@ -582,9 +582,8 @@
         letter-spacing: -0.03em;
       }
 
-      /* Start Bedtime | Wake Up width ratio by time of day (local clock):
-         8:00 PM–2:00 AM → 3:1  |  5:00 AM–11:59 AM → 1:3  |  otherwise → 1:1
-         Toggled from JS: setButtonPriorityStyles() + getPriorityWindow(). */
+      /* Start Bedtime | Wake Up width ratio: follows active action when logged in;
+         when logged out, time of day hints (8pm–2am bedtime, 5am–11:59am wakeup). */
       .sleep-controls {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -2153,16 +2152,31 @@
         return "neutral";
       }
 
-      /** Applies time-based grid columns on `.sleep-controls` plus priority/deemphasis on buttons. */
+      /** Grid width ratio by time when logged out; highlight + columns follow the active action when logged in. */
       function setButtonPriorityStyles() {
         const mode = getPriorityWindow();
         const controls = $("sleepSection").querySelector(".sleep-controls");
         const bedtimeBtn = $("bedtimeBtn");
         const wakeupBtn = $("wakeupBtn");
+        const session = getCurrentSessionOrNull();
+        const isSleeping = Boolean(session && getSleepBucket(session.email).bucket.activeStartAt);
 
         controls.classList.remove("bedtime-priority", "wakeup-priority");
         bedtimeBtn.classList.remove("priority", "deemphasis");
         wakeupBtn.classList.remove("priority", "deemphasis");
+
+        if (session) {
+          if (isSleeping) {
+            controls.classList.add("wakeup-priority");
+            wakeupBtn.classList.add("priority");
+            bedtimeBtn.classList.add("deemphasis");
+          } else {
+            controls.classList.add("bedtime-priority");
+            bedtimeBtn.classList.add("priority");
+            wakeupBtn.classList.add("deemphasis");
+          }
+          return;
+        }
 
         if (mode === "bedtime") {
           controls.classList.add("bedtime-priority");
@@ -2174,7 +2188,6 @@
           controls.classList.add("wakeup-priority");
           wakeupBtn.classList.add("priority");
           bedtimeBtn.classList.add("deemphasis");
-          return;
         }
       }
 
@@ -2207,6 +2220,7 @@
         }
         applyButtonCounterState();
         syncMinus20CheckboxState();
+        setButtonPriorityStyles();
       }
 
       function getSleepBucket(email) {
