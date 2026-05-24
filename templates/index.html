@@ -1045,10 +1045,6 @@
         background: transparent;
       }
 
-      .sleep-dot.blink {
-        animation: dotBlink 0.75s infinite;
-      }
-
       .sleep-btn-hint {
         font-size: 11px;
         font-weight: 500;
@@ -1157,20 +1153,6 @@
         color: rgba(255,255,255,0.78);
         font-size: 12px;
         line-height: 1.45;
-      }
-
-      @keyframes dotBlink {
-        0%, 100% { background: var(--brand); }
-        50% { background: transparent; }
-      }
-
-      .sleep-btn#wakeupBtn .sleep-dot.blink {
-        animation-name: dotBlinkWakeup;
-      }
-
-      @keyframes dotBlinkWakeup {
-        0%, 100% { background: #fbbf24; }
-        50% { background: transparent; }
       }
 
       .goal-page {
@@ -4055,15 +4037,13 @@
 
       let clickProgress = { bedtime: 2, wakeup: 0 };
 
-      function setButtonCounter(kind, remaining, shouldBlink) {
+      function setButtonCounter(kind, remaining) {
         const buttonId = kind === "bedtime" ? "bedtimeBtn" : "wakeupBtn";
         const btn = $(buttonId);
-        const emptyCount = Math.max(0, 2 - remaining);
-        const clicksCompleted = emptyCount;
+        const clicksCompleted = Math.max(0, 2 - remaining);
         const dots = btn.querySelectorAll(".sleep-dot");
         dots.forEach((dot, i) => {
           dot.classList.toggle("empty", i >= remaining);
-          dot.classList.toggle("blink", shouldBlink && i === 1);
         });
         const dotsWrap = btn.querySelector(".sleep-btn-dots");
         if (dotsWrap) {
@@ -4072,8 +4052,8 @@
       }
 
       function applyButtonCounterState() {
-        setButtonCounter("bedtime", clickProgress.bedtime, clickProgress.bedtime === 2);
-        setButtonCounter("wakeup", clickProgress.wakeup, clickProgress.wakeup === 2);
+        setButtonCounter("bedtime", clickProgress.bedtime);
+        setButtonCounter("wakeup", clickProgress.wakeup);
       }
 
       let toastTimer = null;
