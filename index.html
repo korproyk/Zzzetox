@@ -2009,8 +2009,8 @@
         const clicksCompleted = emptyCount;
         const dots = btn.querySelectorAll(".sleep-dot");
         dots.forEach((dot, i) => {
-          dot.classList.toggle("empty", i < emptyCount);
-          dot.classList.toggle("blink", shouldBlink && i === emptyCount);
+          dot.classList.toggle("empty", i >= remaining);
+          dot.classList.toggle("blink", shouldBlink && i === remaining - 1);
         });
         const dotsWrap = btn.querySelector(".sleep-btn-dots");
         if (dotsWrap) {
