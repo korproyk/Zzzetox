@@ -4063,7 +4063,7 @@
         const dots = btn.querySelectorAll(".sleep-dot");
         dots.forEach((dot, i) => {
           dot.classList.toggle("empty", i >= remaining);
-          dot.classList.toggle("blink", shouldBlink && i === remaining - 1);
+          dot.classList.toggle("blink", shouldBlink && i === 1);
         });
         const dotsWrap = btn.querySelector(".sleep-btn-dots");
         if (dotsWrap) {
@@ -4072,8 +4072,8 @@
       }
 
       function applyButtonCounterState() {
-        setButtonCounter("bedtime", clickProgress.bedtime, clickProgress.bedtime > 0 && clickProgress.bedtime < 2);
-        setButtonCounter("wakeup", clickProgress.wakeup, clickProgress.wakeup > 0 && clickProgress.wakeup < 2);
+        setButtonCounter("bedtime", clickProgress.bedtime, clickProgress.bedtime === 2);
+        setButtonCounter("wakeup", clickProgress.wakeup, clickProgress.wakeup === 2);
       }
 
       let toastTimer = null;
