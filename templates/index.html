@@ -1377,12 +1377,31 @@
         width: 44px;
         height: 44px;
         border-radius: 12px;
-        display: grid;
-        place-items: center;
-        font-size: 22px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1px;
+        padding: 5px 4px 4px;
         background: rgba(255, 255, 255, 0.08);
         border: 1px solid rgba(255, 255, 255, 0.12);
         flex-shrink: 0;
+        line-height: 1;
+      }
+
+      .ai-calendar-month {
+        font-size: 9px;
+        font-weight: 750;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.68);
+      }
+
+      .ai-calendar-day {
+        font-size: 18px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        color: rgba(255, 255, 255, 0.94);
       }
 
       .ai-progress-card-title {
@@ -2989,10 +3008,13 @@
 
           <div class="ai-daily-card ai-progress-card">
             <div class="ai-progress-card-head">
-              <div class="ai-progress-card-icon" aria-hidden="true">📅</div>
+              <div class="ai-progress-card-icon" id="progressCardIcon" aria-hidden="true">
+                <span class="ai-calendar-month" id="progressCalendarMonth">—</span>
+                <span class="ai-calendar-day" id="progressCalendarDay">—</span>
+              </div>
               <div>
                 <p class="ai-progress-card-title" id="progressCardTitle">AI feedbacks available soon!</p>
-                <p class="ai-progress-card-sub" id="progressCardSub">Complete all 7 days to unlock AI feedbacks. You're almost there!</p>
+                <p class="ai-progress-card-sub" id="progressCardSub">Complete all 7 days to unlock AI feedbacks.</p>
               </div>
             </div>
             <div class="ai-day-track" id="aiDayTrack" aria-label="7-day AI feedback progress"></div>
@@ -4155,6 +4177,7 @@
         $("sleepRecommendationPage").hidden = pageName !== "recommendation";
         $("countryRankingsPage").hidden = pageName !== "rankings";
         if (pageName === "auth") showAuthLandingMode();
+        if (pageName === "progress") renderAiProgressPage();
       }
 
       let countryFlagTipTimer = null;
@@ -4615,7 +4638,18 @@
         if (compareEl) compareEl.textContent = getSleepCompareMessage(latest, prev);
       }
 
+      const PROGRESS_CARD_SUB = "Complete all 7 days to unlock AI feedbacks.";
+
+      function renderProgressCalendarIcon(now = new Date()) {
+        const monthEl = $("progressCalendarMonth");
+        const dayEl = $("progressCalendarDay");
+        if (!monthEl || !dayEl) return;
+        monthEl.textContent = now.toLocaleString(undefined, { month: "short" }).toUpperCase();
+        dayEl.textContent = String(now.getDate());
+      }
+
       function renderAiProgressPage() {
+        renderProgressCalendarIcon();
         const session = getCurrentSessionOrNull();
         if (!session) return;
         const weekly = getWeeklyProgress(session.email);
@@ -4634,11 +4668,11 @@
           if (statusEl) statusEl.textContent = "✨ All 7 days complete! Tap the arrow to get your AI feedback.";
         } else if (daysLeft === 1) {
           if (cardTitle) cardTitle.textContent = "AI feedbacks available soon!";
-          if (cardSub) cardSub.textContent = "Complete all 7 days to unlock AI feedbacks. You're almost there!";
+          if (cardSub) cardSub.textContent = PROGRESS_CARD_SUB;
           if (statusEl) statusEl.textContent = "✨ 1 day left! Complete tomorrow to get your AI feedback.";
         } else {
           if (cardTitle) cardTitle.textContent = "AI feedbacks available soon!";
-          if (cardSub) cardSub.textContent = "Complete all 7 days to unlock AI feedbacks. You're almost there!";
+          if (cardSub) cardSub.textContent = PROGRESS_CARD_SUB;
           if (statusEl) {
             statusEl.textContent = `✨ ${daysLeft} days left! Keep sleeping for AI feedback!`;
           }
@@ -6198,6 +6232,8 @@
 
       window.setInterval(() => {
         renderSleepMeta();
+        const progressPage = $("aiProgressPage");
+        if (progressPage && !progressPage.hidden) renderProgressCalendarIcon();
       }, 1000);
 
       if (resetQuery === "1" || resetQuery === "true") {
