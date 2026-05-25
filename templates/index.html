@@ -2,7 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Zzzetox</title>
     <meta name="description" content="Don't become a Zzzombie. Adolescent Sleep Management Challenge App." />
     <meta property="og:type" content="website" />
@@ -45,7 +45,11 @@
           linear-gradient(180deg, #07101f, #050815);
         display: grid;
         place-items: center;
-        padding: 28px 16px;
+        padding:
+          max(28px, env(safe-area-inset-top, 0px))
+          max(16px, env(safe-area-inset-right, 0px))
+          max(28px, env(safe-area-inset-bottom, 0px))
+          max(16px, env(safe-area-inset-left, 0px));
         position: relative;
       }
 
@@ -114,10 +118,25 @@
         padding: clamp(18px, 3.5vmin, 28px);
       }
 
-      @media (max-aspect-ratio: 12/10) {
+      /* Tall/narrow phones: fixed 3:2 box was shorter than hero content and clipped CTAs. */
+      @media (max-width: 640px) {
+        body:has(#authPage.auth-landing:not([hidden])) {
+          place-items: start center;
+        }
+
         #authPage.auth-landing .hero {
           min-height: unset;
-          aspect-ratio: 3 / 2;
+          aspect-ratio: unset;
+          overflow: visible;
+          justify-content: flex-start;
+        }
+
+        #authPage.auth-landing .hero .copy {
+          margin-top: clamp(10px, 2.5vmin, 18px);
+        }
+
+        #authPage.auth-landing .hero-auth-cta {
+          margin-top: clamp(14px, 3.5vmin, 20px);
         }
       }
 
