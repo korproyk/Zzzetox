@@ -155,15 +155,18 @@
       }
 
       #authPage.auth-landing .hero-auth-cta {
-        margin-top: clamp(16px, 4vmin, 24px);
-      }
-
-      #authPage.auth-landing .hero-auth-cta-label {
-        font-size: clamp(17px, 4.2vmin, 26px);
+        margin-top: clamp(20px, 5vmin, 32px);
+        width: 100%;
       }
 
       #authPage.auth-landing .hero-guest-btn {
-        font-size: clamp(22px, 5.8vmin, 32px);
+        font-size: clamp(16px, 4vmin, 19px);
+        padding-block: clamp(14px, 3.5vmin, 17px);
+      }
+
+      #authPage.auth-landing .hero-auth-account-btn {
+        font-size: clamp(14px, 3.6vmin, 17px);
+        padding-block: clamp(12px, 3vmin, 14px);
       }
 
       #authPage:not(.auth-landing) {
@@ -259,79 +262,37 @@
         z-index: 1;
         display: flex;
         flex-direction: column;
-        align-items: flex-start;
-        gap: clamp(16px, 4vmin, 24px);
+        align-items: stretch;
+        gap: clamp(14px, 3.5vmin, 20px);
+        width: 100%;
       }
 
       .hero-guest-block {
         display: flex;
         flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
+        align-items: stretch;
+        gap: clamp(8px, 2vmin, 10px);
         width: 100%;
-      }
-
-      .hero-auth-cta-label {
-        display: inline-flex;
-        align-items: baseline;
-        flex-wrap: wrap;
-        gap: 0;
-        color: rgba(255, 255, 255, 0.88);
-        font-size: clamp(18px, 4.6vmin, 28px);
-        font-weight: 700;
-        letter-spacing: -0.01em;
-        line-height: 1.3;
-      }
-
-      .hero-auth-link {
-        appearance: none;
-        margin: 0;
-        padding: 0;
-        border: 0;
-        background: transparent;
-        color: inherit;
-        font: inherit;
-        font-weight: inherit;
-        letter-spacing: inherit;
-        line-height: inherit;
-        cursor: pointer;
-        text-decoration: none;
-      }
-
-      .hero-auth-link:hover {
-        text-decoration: underline;
-        text-underline-offset: 0.08em;
-      }
-
-      .hero-auth-link:focus-visible {
-        outline: 2px solid rgba(255, 255, 255, 0.65);
-        outline-offset: 3px;
-        border-radius: 4px;
-      }
-
-      .hero-auth-sep {
-        color: inherit;
-        pointer-events: none;
-        user-select: none;
       }
 
       .hero-guest-btn {
         appearance: none;
         margin: 0;
-        border: 1px solid rgba(255, 255, 255, 0.28);
-        border-radius: 12px;
-        padding: clamp(12px, 3vmin, 16px) clamp(18px, 4.5vmin, 28px);
+        width: 100%;
+        border: 0;
+        border-radius: 999px;
+        padding: clamp(14px, 3.5vmin, 17px) clamp(20px, 5vmin, 28px);
         color: #ffffff;
-        font-size: clamp(24px, 6vmin, 36px);
+        font-size: clamp(16px, 4.2vmin, 19px);
         font-weight: 800;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.01em;
         line-height: 1.2;
         cursor: pointer;
-        white-space: nowrap;
-        background: linear-gradient(120deg, #22d3ee, #8b5cf6, #34d399, #67e8f9, #c4b5fd);
-        background-size: 260% 260%;
+        text-align: center;
+        background: linear-gradient(90deg, #7c3aed, #6366f1, #22d3ee, #06b6d4, #7c3aed);
+        background-size: 280% 100%;
         background-position: 0% 50%;
-        box-shadow: 0 14px 32px rgba(0, 0, 0, 0.34);
+        box-shadow: 0 12px 28px rgba(88, 28, 135, 0.35);
         animation: auroraGradientFlow 2.4s ease-in-out infinite;
       }
 
@@ -346,10 +307,114 @@
 
       .hero-guest-hint {
         margin: 0;
-        font-size: clamp(12px, 2.8vmin, 14px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font-size: clamp(11px, 2.6vmin, 13px);
         font-weight: 500;
         line-height: 1.4;
-        color: rgba(255, 255, 255, 0.55);
+        color: rgba(255, 255, 255, 0.5);
+        text-align: center;
+      }
+
+      .hero-guest-hint-icon {
+        flex-shrink: 0;
+        width: 14px;
+        height: 14px;
+        color: rgba(255, 255, 255, 0.42);
+      }
+
+      .hero-auth-or {
+        display: flex;
+        align-items: center;
+        gap: clamp(10px, 2.5vmin, 14px);
+        width: 100%;
+      }
+
+      .hero-auth-or-line {
+        flex: 1;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.16);
+      }
+
+      .hero-auth-or-text {
+        flex-shrink: 0;
+        font-size: clamp(12px, 2.8vmin, 13px);
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.42);
+        text-transform: lowercase;
+        user-select: none;
+      }
+
+      .hero-auth-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: clamp(10px, 2.5vmin, 12px);
+        width: 100%;
+      }
+
+      .hero-auth-account-btn {
+        appearance: none;
+        margin: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(6px, 1.5vmin, 8px);
+        padding: clamp(12px, 3vmin, 14px) clamp(10px, 2.5vmin, 14px);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.04);
+        color: #ffffff;
+        font-size: clamp(14px, 3.6vmin, 17px);
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        line-height: 1.2;
+        cursor: pointer;
+        transition: background 0.15s ease, transform 0.15s ease;
+      }
+
+      .hero-auth-account-btn svg {
+        flex-shrink: 0;
+        width: clamp(18px, 4.5vmin, 20px);
+        height: clamp(18px, 4.5vmin, 20px);
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .hero-auth-account-btn--login {
+        border: 1px solid rgba(59, 130, 246, 0.55);
+      }
+
+      .hero-auth-account-btn--login svg {
+        color: #60a5fa;
+      }
+
+      .hero-auth-account-btn--login:hover {
+        background: rgba(59, 130, 246, 0.12);
+      }
+
+      .hero-auth-account-btn--join {
+        border: 1px solid rgba(52, 211, 153, 0.55);
+      }
+
+      .hero-auth-account-btn--join svg {
+        color: #34d399;
+      }
+
+      .hero-auth-account-btn--join:hover {
+        background: rgba(52, 211, 153, 0.12);
+      }
+
+      .hero-auth-account-btn:hover {
+        transform: translateY(-1px);
+      }
+
+      .hero-auth-account-btn:focus-visible {
+        outline: 2px solid rgba(255, 255, 255, 0.65);
+        outline-offset: 3px;
       }
 
       .guest-disclaimer {
@@ -2881,14 +2946,39 @@
           </p>
         </div>
 
-        <div class="hero-auth-cta" aria-label="Start as guest, log in, or sign up">
+        <div class="hero-auth-cta" aria-label="Start as guest, log in, or join">
           <div class="hero-guest-block">
             <button type="button" class="hero-guest-btn" id="heroGuestBtn">Start as Guest</button>
-            <p class="hero-guest-hint">Guest progress is saved for 7 days.</p>
+            <p class="hero-guest-hint">
+              <svg class="hero-guest-hint-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.75" fill="none" />
+                <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" />
+              </svg>
+              <span>Guest progress is saved for 7 days.</span>
+            </p>
           </div>
-          <span class="hero-auth-cta-label">
-            <button type="button" class="hero-auth-link" id="heroGoLoginBtn">Log In</button><span class="hero-auth-sep" aria-hidden="true"> / </span><button type="button" class="hero-auth-link" id="heroGoSignupBtn">Sign Up</button>
-          </span>
+          <div class="hero-auth-or" aria-hidden="true">
+            <span class="hero-auth-or-line"></span>
+            <span class="hero-auth-or-text">or</span>
+            <span class="hero-auth-or-line"></span>
+          </div>
+          <div class="hero-auth-actions">
+            <button type="button" class="hero-auth-account-btn hero-auth-account-btn--login" id="heroGoLoginBtn">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 21a8 8 0 0 0-16 0" />
+                <circle cx="12" cy="8" r="4" />
+              </svg>
+              <span>Login</span>
+            </button>
+            <button type="button" class="hero-auth-account-btn hero-auth-account-btn--join" id="heroGoSignupBtn">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M19 8v6M22 11h-6" />
+              </svg>
+              <span>Join</span>
+            </button>
+          </div>
         </div>
       </section>
 
