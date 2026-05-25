@@ -1367,6 +1367,25 @@
         overflow: visible;
       }
 
+      .tracker-topbar-home {
+        flex-shrink: 0;
+        width: 40px;
+        height: 40px;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: none;
+      }
+
+      .tracker-topbar-home:hover {
+        background: rgba(255, 255, 255, 0.14);
+        box-shadow: none;
+      }
+
+      .tracker-topbar-home[hidden],
+      #trackerLogoutBtn[hidden] {
+        display: none;
+      }
+
       #trackerPage .card,
       #trackerPage .sleep-section {
         overflow: visible;
@@ -3257,6 +3276,11 @@
         <div class="panel sleep-section" id="sleepSection" aria-hidden="false">
           <div class="tracker-topbar">
             <div class="chip" id="trackerSessionChip">—</div>
+            <button type="button" class="home-btn tracker-topbar-home" id="trackerHomeBtn" hidden aria-label="Back to home">
+              <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22">
+                <path fill="#ffffff" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+              </svg>
+            </button>
             <button class="linkbtn" type="button" id="trackerLogoutBtn">Logout</button>
           </div>
 
@@ -4694,6 +4718,14 @@
         /* Rankings are available to guests (read-only global board + signup CTA). */
       }
 
+      function applyTrackerTopbarNav(session) {
+        const guest = isGuestSession(session);
+        const logoutBtn = $("trackerLogoutBtn");
+        const homeBtn = $("trackerHomeBtn");
+        if (logoutBtn) logoutBtn.hidden = guest;
+        if (homeBtn) homeBtn.hidden = !guest;
+      }
+
       function startGuestSession() {
         saveSession({
           email: GUEST_SESSION_EMAIL,
@@ -4805,6 +4837,7 @@
       function refreshSessionUI(preferredPageForLoggedIn = "tracker") {
         const session = getCurrentSessionOrNull();
         applyGuestUiRestrictions();
+        applyTrackerTopbarNav(session);
         if (session && session.email) {
           renderSessionChips(session);
           const page = resolveLoggedInPage(preferredPageForLoggedIn);
@@ -4856,8 +4889,10 @@
         const session = getCurrentSessionOrNull();
         const locked = Boolean(session && getSleepBucket(session.email).bucket.activeStartAt);
         const logoutBtn = $("trackerLogoutBtn");
+        const homeBtn = $("trackerHomeBtn");
         const topbar = $("sleepSection")?.querySelector(".tracker-topbar");
         if (logoutBtn) logoutBtn.disabled = locked;
+        if (homeBtn) homeBtn.disabled = locked;
         if (topbar) {
           if (locked) topbar.setAttribute("inert", "");
           else topbar.removeAttribute("inert");
@@ -5339,6 +5374,14 @@
       $("signupBackBtn").addEventListener("click", () => {
         showAuthLandingMode();
       });
+      $("trackerHomeBtn").addEventListener("click", () => {
+        clearSession();
+        showAuthLandingMode();
+        renderSleepMeta();
+        clickProgress = { bedtime: 2, wakeup: 0 };
+        applyButtonCounterState();
+      });
+
       // Logout
       $("trackerLogoutBtn").addEventListener("click", () => {
         clearSession();
