@@ -4367,14 +4367,15 @@
         const local = store[email] || { activeStartAt: null, history: [], sleepGoalHours: null };
         const serverHist = Array.isArray(serverBucket.history) ? serverBucket.history : [];
         const localHist = Array.isArray(local.history) ? local.history : [];
+        const localHasMore = localHist.length > serverHist.length;
         const merged = {
           activeStartAt: local.activeStartAt ?? serverBucket.activeStartAt ?? null,
           sleepGoalHours:
             serverBucket.sleepGoalHours != null ? serverBucket.sleepGoalHours : local.sleepGoalHours ?? null,
-          history: serverHist.length >= localHist.length ? serverHist : localHist,
+          history: localHasMore ? localHist : serverHist.length ? serverHist : localHist,
         };
         store[email] = merged;
-        saveSleepStore(store, { skipServerPush: true });
+        saveSleepStore(store, { skipServerPush: !localHasMore });
       }
 
       let sleepServerPushTimer = null;
@@ -4391,16 +4392,27 @@
 
       async function pushSleepBucketToServer(email) {
         const session = getCurrentSessionOrNull();
-        if (!session || !session.authToken || session.email !== email) return;
+        if (!session || !session.authToken || session.email !== email) return false;
         const { bucket } = getSleepBucket(email);
         try {
-          await apiAuthFetch("/api/account/sleep", {
+          const { res, data } = await apiAuthFetch("/api/account/sleep", {
             method: "PUT",
             body: JSON.stringify({ sleepBucket: bucket }),
           });
+          return Boolean(res.ok && data.ok);
         } catch {
-          /* offline — local data kept */
+          return false;
         }
+      }
+
+      async function syncSleepBeforeRankings() {
+        if (sleepServerPushTimer) {
+          window.clearTimeout(sleepServerPushTimer);
+          sleepServerPushTimer = null;
+        }
+        const session = getCurrentSessionOrNull();
+        if (!session || !session.authToken || isGuestSession(session)) return;
+        await pushSleepBucketToServer(session.email);
       }
 
       async function pullSleepBucketFromServer() {
@@ -5942,82 +5954,31 @@
         detEl.appendChild(block);
       }
 
-      function buildLocalRankingsPayload() {
-        const users = loadUsers();
-        const byCountry = new Map();
-        const sleepers = [];
-
-        for (const email of Object.keys(users)) {
-          if (email === GUEST_SESSION_EMAIL) continue;
-          const user = users[email];
-          const rawCountry = String(user.country || "").trim();
-          const score = computeLatestSleepScore(email);
-          if (score == null || score <= 0) continue;
-
-          const name = String(user.name || "").trim() || "Sleeper";
-          sleepers.push({
-            name,
-            country: rawCountry,
-            score,
-            email,
-          });
-
-          if (!rawCountry || normCountryQuery(rawCountry) === normCountryQuery(COUNTRY_ANONYMOUS)) continue;
-          const { displayName } = resolveCountryForFlag(rawCountry);
-          const country = displayName || rawCountry;
-          const prev = byCountry.get(country) || { sum: 0, count: 0 };
-          prev.sum += score;
-          prev.count += 1;
-          byCountry.set(country, prev);
-        }
-
-        const nations = [];
-        for (const [country, agg] of byCountry) {
-          const avg = Math.round(agg.sum / agg.count);
-          if (avg > 0) nations.push({ country, score: avg });
-        }
-        nations.sort((a, b) => b.score - a.score || a.country.localeCompare(b.country));
-        sleepers.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
-
-        return { nations, sleepers };
-      }
-
-      function mapLocalRankingsPayload(local) {
-        return {
-          nations: local.nations.map(({ country, score }) => ({ country, score })),
-          sleepers: local.sleepers.map(({ name, country, score, email }) => ({
-            name,
-            country,
-            score,
-            email,
-          })),
-        };
-      }
-
       async function fetchGlobalRankings() {
-        const local = mapLocalRankingsPayload(buildLocalRankingsPayload());
+        await syncSleepBeforeRankings();
+        const session = getCurrentSessionOrNull();
+        const headers = { Accept: "application/json" };
+        if (session?.authToken && !isGuestSession(session)) {
+          headers.Authorization = `Bearer ${session.authToken}`;
+        }
         try {
-          const res = await fetch("/api/rankings", { headers: { Accept: "application/json" } });
-          const data = await res.json();
+          const res = await fetch("/api/rankings", { headers, cache: "no-store" });
+          const data = await res.json().catch(() => ({}));
           if (res.ok && data && data.ok) {
-            const nations = Array.isArray(data.nations) ? data.nations : [];
-            const sleepers = Array.isArray(data.sleepers) ? data.sleepers : [];
-            if (nations.length || sleepers.length) {
-              return {
-                nations,
-                sleepers: sleepers.map((row) => ({
-                  name: row.name,
-                  country: row.country,
-                  score: row.score,
-                  email: row.email || "",
-                })),
-              };
-            }
+            return {
+              nations: Array.isArray(data.nations) ? data.nations : [],
+              sleepers: (Array.isArray(data.sleepers) ? data.sleepers : []).map((row) => ({
+                name: row.name,
+                country: row.country,
+                score: row.score,
+                email: row.email || "",
+              })),
+            };
           }
         } catch {
-          /* use local fallback */
+          /* server unavailable */
         }
-        return local;
+        return { nations: [], sleepers: [], error: true };
       }
 
       function rankingsRankBadgeClass(rank) {
@@ -6272,23 +6233,6 @@
         }
       }
 
-      function mergeCurrentUserIntoRankings(nations, sleepers, session) {
-        if (!session || isGuestSession(session)) return { nations, sleepers };
-        const email = session.email || "";
-        const users = loadUsers()[email] || {};
-        const name = String(session.name || users.name || "").trim();
-        const country = String(users.country || session.country || "");
-        const score = computeLatestSleepScore(email);
-        if (score == null || score <= 0) return { nations, sleepers };
-
-        let nextSleepers = sleepers.slice();
-        if (findMySleeperIndex(nextSleepers, { email, name, country }) < 0) {
-          nextSleepers.push({ email, name, country, score });
-        }
-        nextSleepers.sort((a, b) => b.score - a.score || String(a.name).localeCompare(String(b.name)));
-        return { nations, sleepers: nextSleepers };
-      }
-
       async function renderCountryRankingsPage(options = {}) {
         if (!options.preserveExpand) {
           rankingsMemberExpand = { around: false, top: false, nations: false };
@@ -6321,9 +6265,9 @@
         guestLayout.hidden = true;
         memberLayout.hidden = true;
 
-        let { nations, sleepers } = await fetchGlobalRankings();
-        if (session && !guest) {
-          ({ nations, sleepers } = mergeCurrentUserIntoRankings(nations, sleepers, session));
+        let { nations, sleepers, error } = await fetchGlobalRankings();
+        if (error) {
+          toast("danger", "Could not load rankings from the server. Check your connection and try again.");
         }
 
         if (loadingEl) loadingEl.hidden = true;
@@ -6565,6 +6509,7 @@
         }
 
         applyServerAuthSuccess(loginPayload.user, loginPayload.token, passwordHash, loginPayload.sleepBucket);
+        scheduleSleepServerPush();
         refreshSessionUI("tracker");
         setButtonPriorityStyles();
         renderSleepMeta();
@@ -6610,6 +6555,7 @@
         const countryToSave = isAnon ? COUNTRY_ANONYMOUS : resolvedCountry.displayName;
 
         let signupData = null;
+        const { bucket: signupSleepBucket } = getSleepBucket(email);
         try {
           const { res, data } = await apiAuthFetch("/api/auth/signup", {
             method: "POST",
@@ -6620,6 +6566,7 @@
               country: countryToSave,
               passwordHash,
               createdAt: nowISO(),
+              sleepBucket: signupSleepBucket,
             }),
           });
           if (!res.ok || !data.ok) {
@@ -6627,6 +6574,7 @@
           }
           signupData = data;
           applyServerAuthSuccess(data.user, data.token, passwordHash, data.sleepBucket || null);
+          scheduleSleepServerPush();
         } catch (err) {
           return toast("danger", err && err.message ? err.message : SERVER_REQUIRED_MSG);
         }

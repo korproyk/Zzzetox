@@ -232,6 +232,13 @@ def _auth_token_from_request() -> str | None:
     return request.headers.get("X-Auth-Token", "").strip() or None
 
 
+def _optional_auth_email() -> str | None:
+    token = _auth_token_from_request()
+    if not token:
+        return None
+    return get_account_store().resolve_token(token)
+
+
 def _require_auth_email() -> str | tuple[dict, int]:
     token = _auth_token_from_request()
     if not token:
@@ -318,6 +325,10 @@ def api_auth_signup():
         return _auth_error_response(exc, "signup")
     except Exception as exc:
         return _auth_error_response(exc, "signup")
+
+    sleep_local = body.get("sleepBucket")
+    if isinstance(sleep_local, dict):
+        store.save_sleep_bucket(email, sleep_local)
 
     logger.info("POST /api/auth/signup email=%r db=%s", email, store.db_path)
     return jsonify({"ok": True, "user": user, "token": token, "existingAccount": False})
@@ -984,10 +995,11 @@ def _norm_country_key(country: str) -> str:
     )
 
 
-def _build_global_rankings() -> dict:
+def _build_global_rankings(viewer_email: str | None = None) -> dict:
     store = get_account_store()
     by_country: dict[str, dict] = {}
     sleepers: list[dict] = []
+    viewer_email_norm = str(viewer_email or "").strip().lower()
 
     for row in store.list_ranking_participants():
         email = str(row.get("email") or "").strip().lower()
@@ -1028,19 +1040,24 @@ def _build_global_rankings() -> dict:
     nations.sort(key=lambda x: (-x["score"], x["country"].lower()))
     sleepers.sort(key=lambda x: (-x["score"], x["name"].lower()))
 
+    sleeper_rows: list[dict] = []
+    for s in sleepers[:50]:
+        row = {k: v for k, v in s.items() if k != "email"}
+        if viewer_email_norm and s["email"] == viewer_email_norm:
+            row["email"] = s["email"]
+        sleeper_rows.append(row)
+
     return {
         "nations": nations[:50],
-        "sleepers": [
-            {k: v for k, v in s.items() if k != "email"}
-            for s in sleepers[:50]
-        ],
+        "sleepers": sleeper_rows,
     }
 
 
 @app.route("/api/rankings", methods=["GET"])
 def api_rankings():
     """Public global sleep challenge rankings (nations + top sleepers)."""
-    data = _build_global_rankings()
+    viewer = _optional_auth_email()
+    data = _build_global_rankings(viewer_email=viewer)
     return jsonify({"ok": True, **data})
 
 
