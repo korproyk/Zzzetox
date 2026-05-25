@@ -93,7 +93,6 @@
         width: clamp(40px, 11vmin, 54px);
         height: clamp(40px, 11vmin, 54px);
         border-radius: clamp(12px, 3vmin, 18px);
-        font-size: clamp(16px, 4.5vmin, 22px);
       }
 
       #authPage.auth-landing .brand {
@@ -176,12 +175,11 @@
         width: 42px;
         height: 42px;
         border-radius: 14px;
-        border: 1px solid rgba(255,255,255,0.18);
-        background: linear-gradient(135deg, rgba(139, 92, 246, 0.85), rgba(34, 211, 238, 0.70));
+        flex-shrink: 0;
+        overflow: hidden;
+        display: block;
+        object-fit: cover;
         box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
-        display: grid;
-        place-items: center;
-        font-weight: 800;
       }
 
       .brand h1 {
@@ -1258,7 +1256,13 @@
     <main class="app app-single auth-landing" id="authPage" aria-label="Zzzetox Login/Signup">
       <section class="hero" aria-label="Introduction">
         <div class="brand">
-          <div class="logo" aria-hidden="true">Z</div>
+          <img
+            class="logo"
+            src="/static/images/zzzetox-icon.png"
+            alt="Zzzetox"
+            width="42"
+            height="42"
+          />
           <div>
             <h1>Zzzetox</h1>
             <p>Adolescent Sleep Management Challenge</p>
