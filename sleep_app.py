@@ -48,7 +48,7 @@ from flask import Flask, abort, jsonify, render_template, request, send_from_dir
 
 from account_store import get_account_store
 from nickname_validation import FORBIDDEN_TERMS, nickname_validation_error
-from sleep_scoring import compute_latest_sleep_score
+from sleep_scoring import compute_best_sleep_score, merge_sleep_buckets
 
 logger = logging.getLogger(__name__)
 
@@ -444,8 +444,12 @@ def api_account_sleep():
     bucket = body.get("sleepBucket")
     if not isinstance(bucket, dict):
         return jsonify({"ok": False, "error": "sleepBucket object required."}), 400
-    store.save_sleep_bucket(email, bucket)
-    return jsonify({"ok": True})
+    user = store.get_user(email)
+    age = _parse_age(user.get("age") if user else None)
+    existing = store.get_sleep_bucket(email)
+    merged = merge_sleep_buckets(existing, bucket, age)
+    store.save_sleep_bucket(email, merged)
+    return jsonify({"ok": True, "sleepBucket": merged})
 
 
 def _hours(ms: float) -> float:
@@ -1010,7 +1014,7 @@ def _build_global_rankings(viewer_email: str | None = None) -> dict:
             country_raw = ""
         age = _parse_age(row.get("age"))
         bucket = row.get("bucket") if isinstance(row.get("bucket"), dict) else {}
-        score = compute_latest_sleep_score(age, bucket)
+        score = compute_best_sleep_score(age, bucket)
         if score is None or score <= 0:
             continue
 

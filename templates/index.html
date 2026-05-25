@@ -4363,19 +4363,13 @@
 
       function mergeServerSleepBucket(email, serverBucket) {
         if (!serverBucket || typeof serverBucket !== "object") return;
+        const users = loadUsers();
+        const age = users[email]?.age ?? null;
         const store = loadSleepStore();
         const local = store[email] || { activeStartAt: null, history: [], sleepGoalHours: null };
-        const serverHist = Array.isArray(serverBucket.history) ? serverBucket.history : [];
-        const localHist = Array.isArray(local.history) ? local.history : [];
-        const localHasMore = localHist.length > serverHist.length;
-        const merged = {
-          activeStartAt: local.activeStartAt ?? serverBucket.activeStartAt ?? null,
-          sleepGoalHours:
-            serverBucket.sleepGoalHours != null ? serverBucket.sleepGoalHours : local.sleepGoalHours ?? null,
-          history: localHasMore ? localHist : serverHist.length ? serverHist : localHist,
-        };
+        const merged = mergeSleepBuckets(local, serverBucket, age);
         store[email] = merged;
-        saveSleepStore(store, { skipServerPush: !localHasMore });
+        saveSleepStore(store);
       }
 
       let sleepServerPushTimer = null;
@@ -5728,6 +5722,11 @@
        */
       function zeroSleepSpecialScore(bucket, durLo) {
         const list = (bucket && bucket.history ? bucket.history : []).slice(-7);
+        return zeroSleepSpecialScoreForHistory(list, durLo);
+      }
+
+      function zeroSleepSpecialScoreForHistory(historyPrefix, durLo) {
+        const list = (historyPrefix || []).slice(-7);
         const hoursList = list.map((e) => Math.max(0, Number(e && e.durationMs) || 0) / (1000 * 60 * 60));
         const zeroNights = hoursList.filter((h) => isNearZeroSleepHours(h)).length;
         const avgH = hoursList.length ? hoursList.reduce((a, b) => a + b, 0) / hoursList.length : 0;
@@ -5799,29 +5798,82 @@
         }, 0);
       }
 
-      /** Latest-night sleep score for a registered user, or null if not scorable. */
-      function computeLatestSleepScore(email) {
-        const users = loadUsers();
-        const user = users[email] || {};
-        const age = user.age;
-        const { bucket } = getSleepBucket(email);
-        const list = bucket.history || [];
-        const latest = list.length ? list[list.length - 1] : null;
-        if (!latest || !latest.bedAt) return null;
-        const actualH = bedAtToSleepHours(latest.bedAt);
-        const recH = recommendedBedtimeSleepHours(age);
+      function scoreHistoryEntry(age, history, index) {
+        const entry = history[index];
+        if (!entry || !entry.bedAt) return null;
+        const actualH = bedAtToSleepHours(entry.bedAt);
         if (actualH == null) return null;
-        const hoursSlept = Math.max(0, (Number(latest.durationMs) || 0) / (1000 * 60 * 60));
+        const recH = recommendedBedtimeSleepHours(age);
+        const hoursSlept = Math.max(0, (Number(entry.durationMs) || 0) / (1000 * 60 * 60));
         const [durLo, durHi] = recommendedSleepRangeHoursClient(age);
+        const prefix = history.slice(0, index + 1);
 
         if (isNearZeroSleepHours(hoursSlept)) {
-          return zeroSleepSpecialScore(bucket, durLo);
+          return zeroSleepSpecialScoreForHistory(prefix, durLo);
         }
 
         const diffH = Math.abs(actualH - recH);
         const bedtimeScore = sleepScoreFromBedtimeDiffHours(diffH);
         const durationScore = durationHoursScore(hoursSlept, durLo, durHi);
         return Math.round((bedtimeScore + durationScore) / 2);
+      }
+
+      /** Latest-night sleep score for a registered user, or null if not scorable. */
+      function computeLatestSleepScore(email) {
+        const users = loadUsers();
+        const user = users[email] || {};
+        const { bucket } = getSleepBucket(email);
+        const list = bucket.history || [];
+        if (!list.length) return null;
+        return scoreHistoryEntry(user.age, list, list.length - 1);
+      }
+
+      /** Highest scorable night (for rankings when the same account syncs from multiple devices). */
+      function computeBestSleepScore(email) {
+        const users = loadUsers();
+        const user = users[email] || {};
+        const { bucket } = getSleepBucket(email);
+        const list = bucket.history || [];
+        let best = null;
+        for (let i = 0; i < list.length; i++) {
+          const score = scoreHistoryEntry(user.age, list, i);
+          if (score == null || score <= 0) continue;
+          best = best == null ? score : Math.max(best, score);
+        }
+        return best;
+      }
+
+      function sleepNightKey(entry) {
+        return `${entry.bedAt || ""}|${entry.wokeAt || ""}`;
+      }
+
+      function mergeSleepBuckets(a, b, age) {
+        const left = a && typeof a === "object" ? a : { activeStartAt: null, history: [], sleepGoalHours: null };
+        const right = b && typeof b === "object" ? b : { activeStartAt: null, history: [], sleepGoalHours: null };
+        const combined = new Map();
+
+        for (const entry of [...(left.history || []), ...(right.history || [])]) {
+          if (!entry || typeof entry !== "object") continue;
+          const key = sleepNightKey(entry);
+          const prev = combined.get(key);
+          if (!prev) {
+            combined.set(key, entry);
+            continue;
+          }
+          const pair = [prev, entry];
+          const prevScore = scoreHistoryEntry(age, pair, 0) || 0;
+          const newScore = scoreHistoryEntry(age, pair, 1) || 0;
+          combined.set(key, newScore >= prevScore ? entry : prev);
+        }
+
+        const mergedHistory = [...combined.values()].sort((x, y) =>
+          String(x.bedAt || "").localeCompare(String(y.bedAt || ""))
+        );
+        return {
+          activeStartAt: left.activeStartAt || right.activeStartAt || null,
+          sleepGoalHours: left.sleepGoalHours != null ? left.sleepGoalHours : right.sleepGoalHours ?? null,
+          history: mergedHistory,
+        };
       }
 
       const SLEEP_METRIC_TIP_TEXT = {
@@ -6127,7 +6179,7 @@
         const myRank = myIndex >= 0 ? myIndex + 1 : null;
         const myScore =
           myRow?.score ??
-          (myEmail ? computeLatestSleepScore(myEmail) : null);
+          (myEmail ? computeBestSleepScore(myEmail) : null);
         const { alpha2: myAlpha2 } = resolveCountryForFlag(myCountryRaw);
 
         const rankEl = $("rankingsMyRankValue");

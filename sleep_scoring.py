@@ -98,24 +98,83 @@ def zero_sleep_special_score(history: list, dur_lo: float) -> int:
     return 2
 
 
-def compute_latest_sleep_score(age: int | None, bucket: dict) -> int | None:
-    history = bucket.get("history") if isinstance(bucket.get("history"), list) else []
-    if not history:
+def _score_history_entry(age: int | None, history: list, index: int) -> int | None:
+    if index < 0 or index >= len(history):
         return None
-    latest = history[-1]
-    if not isinstance(latest, dict) or not latest.get("bedAt"):
+    entry = history[index]
+    if not isinstance(entry, dict) or not entry.get("bedAt"):
         return None
-    actual_h = bed_at_to_sleep_hours(str(latest["bedAt"]))
-    rec_h = recommended_bedtime_sleep_hours(age)
+    actual_h = bed_at_to_sleep_hours(str(entry["bedAt"]))
     if actual_h is None:
         return None
-    hours_slept = max(0.0, float(latest.get("durationMs") or 0) / 3_600_000)
+    rec_h = recommended_bedtime_sleep_hours(age)
+    hours_slept = max(0.0, float(entry.get("durationMs") or 0) / 3_600_000)
     dur_lo, dur_hi = recommended_sleep_range_hours(age)
+    prefix = history[: index + 1]
 
     if is_near_zero_sleep_hours(hours_slept):
-        return zero_sleep_special_score(history, dur_lo)
+        return zero_sleep_special_score(prefix, dur_lo)
 
     diff_h = abs(actual_h - rec_h)
     bedtime_score = sleep_score_from_bedtime_diff_hours(diff_h)
     duration_score = duration_hours_score(hours_slept, dur_lo, dur_hi)
     return round((bedtime_score + duration_score) / 2)
+
+
+def compute_latest_sleep_score(age: int | None, bucket: dict) -> int | None:
+    history = bucket.get("history") if isinstance(bucket.get("history"), list) else []
+    if not history:
+        return None
+    return _score_history_entry(age, history, len(history) - 1)
+
+
+def compute_best_sleep_score(age: int | None, bucket: dict) -> int | None:
+    """Highest scorable night in history (used when the same account syncs from multiple devices)."""
+    history = bucket.get("history") if isinstance(bucket.get("history"), list) else []
+    if not history:
+        return None
+    best: int | None = None
+    for i in range(len(history)):
+        score = _score_history_entry(age, history, i)
+        if score is None or score <= 0:
+            continue
+        best = score if best is None else max(best, score)
+    return best
+
+
+def _night_key(entry: dict) -> str:
+    return f"{entry.get('bedAt') or ''}|{entry.get('wokeAt') or ''}"
+
+
+def merge_sleep_buckets(
+    a: dict | None,
+    b: dict | None,
+    age: int | None = None,
+) -> dict:
+    """Merge two device buckets; duplicate nights keep the higher-scoring row."""
+    a = a if isinstance(a, dict) else {}
+    b = b if isinstance(b, dict) else {}
+    combined: dict[str, dict] = {}
+    for entry in list(a.get("history") or []) + list(b.get("history") or []):
+        if not isinstance(entry, dict):
+            continue
+        key = _night_key(entry)
+        prev = combined.get(key)
+        if prev is None:
+            combined[key] = entry
+            continue
+        pair = [prev, entry]
+        prev_score = _score_history_entry(age, pair, 0) or 0
+        new_score = _score_history_entry(age, pair, 1) or 0
+        combined[key] = entry if new_score >= prev_score else prev
+
+    merged_history = sorted(combined.values(), key=lambda e: str(e.get("bedAt") or ""))
+    active = a.get("activeStartAt") or b.get("activeStartAt")
+    goal = a.get("sleepGoalHours")
+    if goal is None:
+        goal = b.get("sleepGoalHours")
+    return {
+        "activeStartAt": active,
+        "history": merged_history,
+        "sleepGoalHours": goal,
+    }
