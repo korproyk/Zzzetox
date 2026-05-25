@@ -5173,6 +5173,9 @@
 
         if (nextFeedbackBtn) nextFeedbackBtn.hidden = !weekly.canGetWeeklyFeedback;
 
+        const returnSleepBtn = $("returnSleepBtn");
+        if (returnSleepBtn) returnSleepBtn.hidden = weekly.canGetWeeklyFeedback;
+
         const cardTitle = $("progressCardTitle");
         const cardSub = $("progressCardSub");
         const statusEl = $("aiProgressStatus");
