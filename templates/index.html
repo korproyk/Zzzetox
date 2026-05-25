@@ -845,6 +845,124 @@
         min-height: 0;
       }
 
+      .user-id-input-wrap {
+        display: flex;
+        align-items: stretch;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(8, 14, 28, 0.55);
+        overflow: hidden;
+      }
+
+      .user-id-input-wrap:focus-within {
+        border-color: rgba(34, 211, 238, 0.55);
+        box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.12);
+      }
+
+      .user-id-input-wrap > input {
+        flex: 1 1 auto;
+        min-width: 0;
+        width: auto;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .user-id-input-wrap > input:focus {
+        border: 0;
+        box-shadow: none;
+      }
+
+      .user-id-suffix {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        padding: 11px 12px 11px 4px;
+        font-size: 14px;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.38);
+        pointer-events: none;
+        user-select: none;
+        white-space: nowrap;
+      }
+
+      .user-id-static-hint {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.4;
+        color: rgba(255, 255, 255, 0.45);
+      }
+
+      .user-id-suffix-warn {
+        position: relative;
+        margin: 4px 0 0;
+        padding: 8px 12px;
+        width: fit-content;
+        max-width: 100%;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.35;
+        color: #fb923c;
+        background: rgba(251, 146, 60, 0.12);
+        border: 1px solid rgba(251, 146, 60, 0.42);
+        border-radius: 10px;
+        animation: guest-device-notice-blink 1.1s ease-in-out infinite;
+      }
+
+      .user-id-suffix-warn::before {
+        content: "";
+        position: absolute;
+        top: -7px;
+        left: 16px;
+        width: 0;
+        height: 0;
+        border-left: 7px solid transparent;
+        border-right: 7px solid transparent;
+        border-bottom: 7px solid rgba(251, 146, 60, 0.42);
+      }
+
+      .user-id-suffix-warn[hidden] {
+        display: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .user-id-suffix-warn {
+          animation: none;
+        }
+      }
+
+      .password-safety-notice {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin-top: 4px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(96, 165, 250, 0.32);
+        background: rgba(59, 130, 246, 0.08);
+      }
+
+      .password-safety-notice svg {
+        flex-shrink: 0;
+        width: 22px;
+        height: 22px;
+        color: #a78bfa;
+      }
+
+      .password-safety-notice p {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.72);
+      }
+
+      .country-anonymous {
+        font-style: normal;
+        font-weight: 700;
+        color: #a78bfa;
+      }
+
       .toast {
         position: fixed;
         left: 50%;
@@ -2985,19 +3103,30 @@
       <section class="card" id="authCard" aria-label="Authentication" hidden inert>
         <div class="panel" id="panel-login" role="region" aria-label="Login" aria-hidden="false">
           <h3 class="title">Login</h3>
-          <p class="desc">Log in with your registered email and password.</p>
+          <p class="desc">Log in with your registered User ID and password.</p>
 
           <form id="loginForm" autocomplete="on">
             <div class="field">
-              <label for="loginEmail">Email</label>
-              <input id="loginEmail" name="email" type="email" placeholder="ID: " required />
-              <p class="signup-name-hint" id="loginEmailHint" aria-live="polite"></p>
+              <label for="loginEmail">User ID</label>
+              <div class="user-id-input-wrap">
+                <input id="loginEmail" name="email" type="text" inputmode="email" autocomplete="username" placeholder="dreamwalker" required />
+                <span class="user-id-suffix" aria-hidden="true">@zzzetox.com</span>
+              </div>
+              <p class="user-id-static-hint">This will be your unique ID for login.</p>
+              <p class="user-id-suffix-warn" id="loginEmailSuffixWarn" hidden aria-live="polite">You don't have to write this!</p>
             </div>
             <div class="field">
               <label for="loginPassword">Password</label>
               <div class="password-input-wrap">
                 <input id="loginPassword" name="password" type="password" placeholder="Password: " required minlength="8" />
                 <button type="button" class="password-toggle" data-password-for="loginPassword" aria-label="Show password" aria-pressed="false"></button>
+              </div>
+              <div class="password-safety-notice" role="note">
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 3l7 3v5c0 4.2-2.8 7.6-7 9-4.2-1.4-7-4.8-7-9V6l7-3z" />
+                  <path d="M9 12l2 2 4-4" />
+                </svg>
+                <p>Please keep your password safe.<br />For privacy protection, password recovery is limited.</p>
               </div>
             </div>
 
@@ -3046,9 +3175,13 @@
             </div>
 
             <div class="field">
-              <label for="signupEmail">Email</label>
-              <input id="signupEmail" name="email" type="email" placeholder="_____@zzzetox.com" required />
-              <p class="signup-name-hint" id="signupEmailHint" aria-live="polite"></p>
+              <label for="signupEmail">User ID</label>
+              <div class="user-id-input-wrap">
+                <input id="signupEmail" name="email" type="text" inputmode="email" autocomplete="username" placeholder="dreamwalker" required />
+                <span class="user-id-suffix" aria-hidden="true">@zzzetox.com</span>
+              </div>
+              <p class="user-id-static-hint">This will be your unique ID for login.</p>
+              <p class="user-id-suffix-warn" id="signupEmailSuffixWarn" hidden aria-live="polite">You don't have to write this!</p>
             </div>
 
             <div class="row">
@@ -3068,9 +3201,17 @@
               </div>
             </div>
 
+            <div class="password-safety-notice" role="note">
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3l7 3v5c0 4.2-2.8 7.6-7 9-4.2-1.4-7-4.8-7-9V6l7-3z" />
+                <path d="M9 12l2 2 4-4" />
+              </svg>
+              <p>Please keep your password safe.<br />For privacy protection, password recovery is limited.</p>
+            </div>
+
             <div class="field country-field">
               <div class="country-row">
-                <span class="country-prompt" id="countryPrompt">Select or search your country of residence.<br />Choose <strong>ANONYMOUS</strong> for private.</span>
+                <span class="country-prompt" id="countryPrompt">Choose <em class="country-anonymous">Anonymous</em> for privacy.</span>
                 <div class="country-input-wrap">
                   <input type="hidden" id="signupCountry" name="country" value="" />
                   <input
@@ -3843,36 +3984,55 @@
       }
 
       const ZZZETOX_EMAIL_SUFFIX = "@zzzetox.com";
-      const ZZZETOX_EMAIL_HINT = 'Please register with "@zzzetox.com"';
 
       function isZzzetoxEmail(email) {
         const normalized = normalizeEmail(email);
         return normalized.endsWith(ZZZETOX_EMAIL_SUFFIX) && normalized.length > ZZZETOX_EMAIL_SUFFIX.length;
       }
 
-      function updateZzzetoxEmailHint(inputId, hintId) {
-        const raw = String($(inputId)?.value || "");
-        const hint = $(hintId);
-        if (!hint) return !raw.trim() || isZzzetoxEmail(raw);
-        if (!raw.trim()) {
-          hint.textContent = "";
-          return true;
-        }
-        const ok = isZzzetoxEmail(raw);
-        hint.textContent = ok ? "" : ZZZETOX_EMAIL_HINT;
-        return ok;
+      function userIdLocalHasTypedSuffix(raw) {
+        return String(raw || "").toLowerCase().includes(ZZZETOX_EMAIL_SUFFIX);
       }
 
-      function installZzzetoxEmailValidation() {
-        for (const [inputId, hintId] of [
-          ["signupEmail", "signupEmailHint"],
-          ["loginEmail", "loginEmailHint"],
+      function stripZzzetoxSuffixFromLocal(raw) {
+        const v = String(raw || "").trim();
+        const lower = v.toLowerCase();
+        const suffix = ZZZETOX_EMAIL_SUFFIX;
+        const idx = lower.indexOf(suffix);
+        if (idx >= 0) return v.slice(0, idx).trim();
+        return v;
+      }
+
+      function buildZzzetoxEmail(localRaw) {
+        const local = stripZzzetoxSuffixFromLocal(localRaw).toLowerCase();
+        if (!local) return "";
+        return local + ZZZETOX_EMAIL_SUFFIX;
+      }
+
+      function updateUserIdSuffixWarn(inputId, warnId) {
+        const warn = $(warnId);
+        if (!warn) return;
+        warn.hidden = !userIdLocalHasTypedSuffix($(inputId)?.value || "");
+      }
+
+      function blurSanitizeUserIdLocal(inputId, warnId) {
+        const el = $(inputId);
+        if (!el) return;
+        const stripped = stripZzzetoxSuffixFromLocal(el.value);
+        if (stripped !== el.value) el.value = stripped;
+        updateUserIdSuffixWarn(inputId, warnId);
+      }
+
+      function installUserIdInputValidation() {
+        for (const [inputId, warnId] of [
+          ["signupEmail", "signupEmailSuffixWarn"],
+          ["loginEmail", "loginEmailSuffixWarn"],
         ]) {
           const el = $(inputId);
           if (!el) continue;
-          const sync = () => updateZzzetoxEmailHint(inputId, hintId);
+          const sync = () => updateUserIdSuffixWarn(inputId, warnId);
           el.addEventListener("input", sync);
-          el.addEventListener("blur", sync);
+          el.addEventListener("blur", () => blurSanitizeUserIdLocal(inputId, warnId));
         }
       }
 
@@ -3929,6 +4089,25 @@
         if (d == null || d === "") return;
         for (const ch of d) {
           if (ch.codePointAt(0) > 127) {
+            ev.preventDefault();
+            return;
+          }
+        }
+      }
+
+      function beforeInputUserIdLocal(ev) {
+        if (ev.isComposing) return;
+        const it = ev.inputType || "";
+        if (it.startsWith("delete") || it === "historyUndo" || it === "historyRedo") return;
+        if (it === "insertLineBreak" || it === "insertParagraph") {
+          ev.preventDefault();
+          return;
+        }
+        const d = ev.data;
+        if (d == null || d === "") return;
+        for (const ch of d) {
+          const cp = ch.codePointAt(0);
+          if (cp > 127 || ch === "@") {
             ev.preventDefault();
             return;
           }
@@ -4024,7 +4203,7 @@
         for (const id of ["signupEmail", "loginEmail"]) {
           const el = $(id);
           if (!el) continue;
-          el.addEventListener("beforeinput", beforeInputAsciiOnly);
+          el.addEventListener("beforeinput", beforeInputUserIdLocal);
           el.addEventListener("compositionstart", preventImeComposition);
           el.addEventListener("paste", pasteAsciiOnly);
           el.addEventListener("input", inputSanitizeAsciiEmail);
@@ -4872,7 +5051,7 @@
         const monthEl = $("progressCalendarMonth");
         const dayEl = $("progressCalendarDay");
         if (!monthEl || !dayEl) return;
-        monthEl.textContent = now.toLocaleString(undefined, { month: "short" }).toUpperCase();
+        monthEl.textContent = now.toLocaleString("en-US", { month: "short" });
         dayEl.textContent = String(now.getDate());
       }
 
@@ -6263,14 +6442,11 @@
       // Login
       $("loginForm").addEventListener("submit", async (e) => {
         e.preventDefault();
-        const email = normalizeEmail($("loginEmail").value);
+        const email = normalizeEmail(buildZzzetoxEmail($("loginEmail").value));
         const password = $("loginPassword").value;
-        if (!email) return toast("danger", "Please enter your email.");
-        if (email === GUEST_SESSION_EMAIL) return toast("danger", "This email is reserved. Use Start as Guest on the home screen.");
-        if (!isZzzetoxEmail(email)) {
-          updateZzzetoxEmailHint("loginEmail", "loginEmailHint");
-          return;
-        }
+        if (!email) return toast("danger", "Please enter your User ID.");
+        if (email === GUEST_SESSION_EMAIL) return toast("danger", "This User ID is reserved. Use Start as Guest on the home screen.");
+        if (!isZzzetoxEmail(email)) return toast("danger", "Please enter a valid User ID.");
         if (!password || password.length < 8) return toast("danger", "Password must be at least 8 characters.");
 
         const passwordHash = await sha256Hex(password);
@@ -6337,7 +6513,7 @@
         e.preventDefault();
         const name = String($("signupName").value || "").trim();
         const ageRaw = $("signupAge").value;
-        const email = normalizeEmail($("signupEmail").value);
+        const email = normalizeEmail(buildZzzetoxEmail($("signupEmail").value));
         const password = $("signupPassword").value;
         const password2 = $("signupPassword2").value;
         const country = String($("signupCountry").value || "")
@@ -6350,12 +6526,9 @@
             "Nickname must be 2–16 characters: letters, numbers, or symbols (ASCII only, no spaces; Korean not allowed)."
           );
         }
-        if (!email) return toast("danger", "Please enter your email.");
-        if (email === GUEST_SESSION_EMAIL) return toast("danger", "This email is reserved. Use Start as Guest on the home screen.");
-        if (!isZzzetoxEmail(email)) {
-          updateZzzetoxEmailHint("signupEmail", "signupEmailHint");
-          return;
-        }
+        if (!email) return toast("danger", "Please enter your User ID.");
+        if (email === GUEST_SESSION_EMAIL) return toast("danger", "This User ID is reserved. Use Start as Guest on the home screen.");
+        if (!isZzzetoxEmail(email)) return toast("danger", "Please enter a valid User ID.");
         if (!password || password.length < 8) return toast("danger", "Password must be at least 8 characters.");
         if (password !== password2) return toast("danger", "Password confirmation does not match.");
         if (!country) {
@@ -6446,7 +6619,7 @@
 
       initCountryPicker();
       installAuthEnglishOnlyInputs();
-      installZzzetoxEmailValidation();
+      installUserIdInputValidation();
       const bootSession = getCurrentSessionOrNull();
       if (bootSession && bootSession.email) {
         refreshSessionUI(resolveLoggedInPage("tracker"));
