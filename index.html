@@ -1336,13 +1336,72 @@
           animation: none;
         }
       }
+
+      .guest-device-notice-actions {
+        position: absolute;
+        top: clamp(10px, 2.5vw, 14px);
+        right: clamp(10px, 2.5vw, 14px);
+        z-index: 1;
+      }
+
+      .guest-device-notice-okay {
+        appearance: none;
+        border: 1px solid rgba(251, 146, 60, 0.38);
+        border-radius: 999px;
+        background: rgba(251, 146, 60, 0.1);
+        color: rgba(254, 215, 170, 0.92);
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        padding: 11px 20px;
+        min-width: 72px;
+        cursor: pointer;
+        line-height: 1;
+      }
+
+      .guest-device-notice-okay:hover {
+        background: rgba(251, 146, 60, 0.18);
+        color: #ffedd5;
+      }
+
+      #bedtimeDeviceNoticeOverlay {
+        background: rgba(5, 8, 21, 0.38);
+      }
+
+      #bedtimeDeviceNoticeOverlay .guest-device-notice-panel {
+        border-color: rgba(253, 186, 116, 0.28);
+        background: linear-gradient(180deg, rgba(40, 32, 28, 0.88), rgba(18, 16, 24, 0.9));
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+      }
+
+      #bedtimeDeviceNoticeOverlay .guest-device-notice-countdown {
+        color: rgba(253, 186, 116, 0.55);
+      }
+
+      #bedtimeDeviceNoticeOverlay .guest-device-notice-msg {
+        color: rgba(253, 186, 116, 0.78);
+        animation: guest-device-notice-blink 1.4s ease-in-out infinite;
+      }
+
+      #bedtimeDeviceNoticeOverlay .guest-device-notice-okay {
+        border-color: rgba(253, 186, 116, 0.32);
+        background: rgba(253, 186, 116, 0.08);
+        color: rgba(254, 215, 170, 0.88);
+      }
+
+      #bedtimeDeviceNoticeOverlay .guest-device-notice-okay:hover {
+        background: rgba(253, 186, 116, 0.16);
+        color: rgba(255, 237, 213, 0.95);
+      }
     </style>
   </head>
   <body>
     <div id="bedtimeDeviceNoticeOverlay" class="guest-device-notice" hidden inert aria-label="Same device wakeup notice">
       <section class="guest-device-notice-panel" role="alertdialog" aria-modal="true" aria-labelledby="bedtimeDeviceNoticeMsg">
         <p class="guest-device-notice-countdown" id="bedtimeDeviceNoticeCountdown" aria-live="polite">Closes: 10s</p>
-        <button type="button" class="guest-device-notice-close" id="bedtimeDeviceNoticeCloseBtn" aria-label="Close notice">×</button>
+        <div class="guest-device-notice-actions">
+          <button type="button" class="guest-device-notice-okay" id="bedtimeDeviceNoticeOkayBtn">Okay</button>
+        </div>
         <p class="guest-device-notice-msg" id="bedtimeDeviceNoticeMsg">
           ⚠️ You need to use the same<br />device to wake up and save the time!
         </p>
@@ -2929,7 +2988,7 @@
       });
 
       $("bedtimeBtn").addEventListener("click", () => handleTwoStepClick("bedtime", startBedtime));
-      $("bedtimeDeviceNoticeCloseBtn").addEventListener("click", () => {
+      $("bedtimeDeviceNoticeOkayBtn").addEventListener("click", () => {
         hideBedtimeDeviceNotice();
       });
       $("wakeupBtn").addEventListener("click", () => handleTwoStepClick("wakeup", recordWakeup));
