@@ -1250,9 +1250,104 @@
         font-size: 11px;
         color: rgba(255,255,255,0.55);
       }
+
+      .guest-device-notice {
+        position: fixed;
+        inset: 0;
+        z-index: 170;
+        display: grid;
+        place-items: center;
+        padding: 28px 16px;
+        background: rgba(5, 8, 21, 0.55);
+        backdrop-filter: blur(4px);
+      }
+
+      .guest-device-notice[hidden] {
+        display: none;
+      }
+
+      .guest-device-notice-panel {
+        position: relative;
+        width: min(480px, calc(100vw - 32px));
+        border: 1px solid rgba(251, 146, 60, 0.45);
+        border-radius: 18px;
+        background: linear-gradient(180deg, rgba(30, 18, 8, 0.95), rgba(12, 10, 18, 0.92));
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+        padding: clamp(48px, 10vmin, 60px) clamp(20px, 5vw, 28px) clamp(24px, 5vw, 32px);
+        box-sizing: border-box;
+      }
+
+      .guest-device-notice-close {
+        position: absolute;
+        top: clamp(12px, 3vw, 16px);
+        right: clamp(12px, 3vw, 16px);
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        border: 1px solid rgba(251, 146, 60, 0.5);
+        background: rgba(251, 146, 60, 0.12);
+        color: #fdba74;
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1;
+        padding: 0;
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+      }
+
+      .guest-device-notice-close:hover {
+        background: rgba(251, 146, 60, 0.22);
+        color: #ffedd5;
+      }
+
+      .guest-device-notice-countdown {
+        position: absolute;
+        top: clamp(14px, 3.2vw, 18px);
+        left: 0;
+        right: 0;
+        margin: 0;
+        text-align: center;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        color: rgba(253, 186, 116, 0.82);
+      }
+
+      @keyframes guest-device-notice-blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.28; }
+      }
+
+      .guest-device-notice-msg {
+        margin: 0 auto;
+        max-width: 30ch;
+        text-align: center;
+        font-size: clamp(16px, 4vmin, 20px);
+        font-weight: 800;
+        line-height: 1.5;
+        letter-spacing: -0.01em;
+        color: #fb923c;
+        animation: guest-device-notice-blink 1.1s ease-in-out infinite;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .guest-device-notice-msg {
+          animation: none;
+        }
+      }
     </style>
   </head>
   <body>
+    <div id="bedtimeDeviceNoticeOverlay" class="guest-device-notice" hidden inert aria-label="Same device wakeup notice">
+      <section class="guest-device-notice-panel" role="alertdialog" aria-modal="true" aria-labelledby="bedtimeDeviceNoticeMsg">
+        <p class="guest-device-notice-countdown" id="bedtimeDeviceNoticeCountdown" aria-live="polite">Closes: 10s</p>
+        <button type="button" class="guest-device-notice-close" id="bedtimeDeviceNoticeCloseBtn" aria-label="Close notice">×</button>
+        <p class="guest-device-notice-msg" id="bedtimeDeviceNoticeMsg">
+          ⚠️ You need to use the same<br />device to wake up and save the time!
+        </p>
+      </section>
+    </div>
     <main class="app app-single auth-landing" id="authPage" aria-label="Zzzetox Login/Signup">
       <section class="hero" aria-label="Introduction">
         <div class="brand">
@@ -2023,6 +2118,35 @@
       }
 
       let toastTimer = null;
+      let bedtimeDeviceNoticeInterval = null;
+
+      function hideBedtimeDeviceNotice() {
+        const overlay = $("bedtimeDeviceNoticeOverlay");
+        if (!overlay) return;
+        overlay.hidden = true;
+        overlay.setAttribute("inert", "");
+        if (bedtimeDeviceNoticeInterval) {
+          window.clearInterval(bedtimeDeviceNoticeInterval);
+          bedtimeDeviceNoticeInterval = null;
+        }
+      }
+
+      function showBedtimeDeviceNotice() {
+        const overlay = $("bedtimeDeviceNoticeOverlay");
+        const countdownEl = $("bedtimeDeviceNoticeCountdown");
+        if (!overlay) return;
+        hideBedtimeDeviceNotice();
+        let secondsLeft = 10;
+        if (countdownEl) countdownEl.textContent = `Closes: ${secondsLeft}s`;
+        overlay.hidden = false;
+        overlay.removeAttribute("inert");
+        bedtimeDeviceNoticeInterval = window.setInterval(() => {
+          secondsLeft -= 1;
+          if (countdownEl) countdownEl.textContent = `Closes: ${secondsLeft}s`;
+          if (secondsLeft <= 0) hideBedtimeDeviceNotice();
+        }, 1000);
+      }
+
       function toast(kind, message) {
         const el = $("toast");
         const msg = $("toastMsg");
@@ -2348,6 +2472,7 @@
         store[session.email] = bucket;
         saveSleepStore(store);
         renderSleepMeta();
+        showBedtimeDeviceNotice();
         toast("ok", "Bedtime tracking started. It will continue even if you close the app.");
       }
 
@@ -2804,6 +2929,9 @@
       });
 
       $("bedtimeBtn").addEventListener("click", () => handleTwoStepClick("bedtime", startBedtime));
+      $("bedtimeDeviceNoticeCloseBtn").addEventListener("click", () => {
+        hideBedtimeDeviceNotice();
+      });
       $("wakeupBtn").addEventListener("click", () => handleTwoStepClick("wakeup", recordWakeup));
 
       document.addEventListener(

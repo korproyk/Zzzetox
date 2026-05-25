@@ -2758,6 +2758,15 @@
         </p>
       </section>
     </div>
+    <div id="bedtimeDeviceNoticeOverlay" class="guest-device-notice" hidden inert aria-label="Same device wakeup notice">
+      <section class="guest-device-notice-panel" role="alertdialog" aria-modal="true" aria-labelledby="bedtimeDeviceNoticeMsg">
+        <p class="guest-device-notice-countdown" id="bedtimeDeviceNoticeCountdown" aria-live="polite">Closes: 10s</p>
+        <button type="button" class="guest-device-notice-close" id="bedtimeDeviceNoticeCloseBtn" aria-label="Close notice">×</button>
+        <p class="guest-device-notice-msg" id="bedtimeDeviceNoticeMsg">
+          ⚠️ You need to use the same<br />device to wake up and save the time!
+        </p>
+      </section>
+    </div>
     <main class="app app-single auth-landing" id="authPage" aria-label="Zzzetox Login/Signup">
       <section class="hero" aria-label="Introduction">
         <div class="brand">
@@ -4123,6 +4132,7 @@
       }
 
       let guestDeviceNoticeInterval = null;
+      let bedtimeDeviceNoticeInterval = null;
 
       function hideGuestDisclaimer() {
         const overlay = $("guestDisclaimerOverlay");
@@ -4155,6 +4165,33 @@
           secondsLeft -= 1;
           if (countdownEl) countdownEl.textContent = `Closes: ${secondsLeft}s`;
           if (secondsLeft <= 0) hideGuestDeviceNotice();
+        }, 1000);
+      }
+
+      function hideBedtimeDeviceNotice() {
+        const overlay = $("bedtimeDeviceNoticeOverlay");
+        if (!overlay) return;
+        overlay.hidden = true;
+        overlay.setAttribute("inert", "");
+        if (bedtimeDeviceNoticeInterval) {
+          window.clearInterval(bedtimeDeviceNoticeInterval);
+          bedtimeDeviceNoticeInterval = null;
+        }
+      }
+
+      function showBedtimeDeviceNotice() {
+        const overlay = $("bedtimeDeviceNoticeOverlay");
+        const countdownEl = $("bedtimeDeviceNoticeCountdown");
+        if (!overlay) return;
+        hideBedtimeDeviceNotice();
+        let secondsLeft = 10;
+        if (countdownEl) countdownEl.textContent = `Closes: ${secondsLeft}s`;
+        overlay.hidden = false;
+        overlay.removeAttribute("inert");
+        bedtimeDeviceNoticeInterval = window.setInterval(() => {
+          secondsLeft -= 1;
+          if (countdownEl) countdownEl.textContent = `Closes: ${secondsLeft}s`;
+          if (secondsLeft <= 0) hideBedtimeDeviceNotice();
         }, 1000);
       }
 
@@ -4780,6 +4817,7 @@
       function onDocumentVisibilityChange() {
         if (document.visibilityState === "hidden") {
           hideGuestDeviceNotice();
+          hideBedtimeDeviceNotice();
           return;
         }
         refreshSleepTimerIfTracking();
@@ -4792,6 +4830,7 @@
 
       function onWindowPageHide() {
         hideGuestDeviceNotice();
+        hideBedtimeDeviceNotice();
       }
 
       function maybeAutoStopSleepTracking() {
@@ -4853,6 +4892,7 @@
         store[session.email] = bucket;
         saveSleepStore(store);
         renderSleepMeta();
+        showBedtimeDeviceNotice();
         toast("ok", "Bedtime tracking started. It keeps running until you press wakeup.");
       }
 
@@ -4908,6 +4948,9 @@
       });
       $("guestDeviceNoticeCloseBtn").addEventListener("click", () => {
         hideGuestDeviceNotice();
+      });
+      $("bedtimeDeviceNoticeCloseBtn").addEventListener("click", () => {
+        hideBedtimeDeviceNotice();
       });
 
       let aiTipRevealTimer = null;
