@@ -2763,11 +2763,22 @@
         <div class="brand">
           <img
             class="logo"
-            src="{{ url_for('static', filename='images/zzzetox-icon.png') }}"
+            id="appLogo"
+            src="Zzzetox.png"
             alt="Zzzetox"
             width="42"
             height="42"
           />
+          <script>
+            (function () {
+              const el = document.getElementById("appLogo");
+              if (!el) return;
+              const path = decodeURIComponent(location.pathname || "").replace(/\\/g, "/");
+              if (location.protocol === "file:" && /\/templates\//.test(path)) {
+                el.src = "../Zzzetox.png";
+              }
+            })();
+          </script>
           <div>
             <h1>Zzzetox</h1>
             <p>Adolescent Sleep Management Challenge App</p>

@@ -148,6 +148,15 @@ def sleep_level_images_dispatch(fname: str):
     return app.send_static_file(f"images/{fname}")
 
 
+@app.get("/Zzzetox.png")
+def zzzetox_logo():
+    """App icon at project root — works with relative src in index without /static/."""
+    logo = ROOT / "Zzzetox.png"
+    if not logo.is_file():
+        abort(404)
+    return send_from_directory(str(ROOT), "Zzzetox.png", mimetype="image/png")
+
+
 @app.route("/")
 def index():
     sleep_level_image_urls = {
