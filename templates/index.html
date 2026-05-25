@@ -1369,15 +1369,7 @@
 
       .tracker-topbar-home {
         flex-shrink: 0;
-        width: 40px;
-        height: 40px;
-        border: 1px solid rgba(255, 255, 255, 0.28);
-        background: rgba(255, 255, 255, 0.08);
-        box-shadow: none;
-      }
-
-      .tracker-topbar-home:hover {
-        background: rgba(255, 255, 255, 0.14);
+        padding: 0;
         box-shadow: none;
       }
 
@@ -2930,6 +2922,23 @@
         fill: #ffffff;
       }
 
+      .home-btn.tracker-topbar-home {
+        width: 32px;
+        height: 32px;
+        border-color: rgba(255, 255, 255, 0.22);
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .home-btn.tracker-topbar-home svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .home-btn.tracker-topbar-home:hover {
+        background: rgba(255, 255, 255, 0.12);
+        box-shadow: none;
+      }
+
       .country-field { margin-top: 4px; }
 
       .country-row {
@@ -3277,7 +3286,7 @@
           <div class="tracker-topbar">
             <div class="chip" id="trackerSessionChip">—</div>
             <button type="button" class="home-btn tracker-topbar-home" id="trackerHomeBtn" hidden aria-label="Back to home">
-              <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path fill="#ffffff" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
               </svg>
             </button>
@@ -5376,7 +5385,7 @@
       });
       $("trackerHomeBtn").addEventListener("click", () => {
         clearSession();
-        showAuthLandingMode();
+        refreshSessionUI("auth");
         renderSleepMeta();
         clickProgress = { bedtime: 2, wakeup: 0 };
         applyButtonCounterState();
