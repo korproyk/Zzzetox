@@ -118,25 +118,17 @@
         padding: clamp(18px, 3.5vmin, 28px);
       }
 
-      /* Tall/narrow phones: fixed 3:2 box was shorter than hero content and clipped CTAs. */
+      /* Tall/narrow phones: fill viewport and center content (no fixed aspect-ratio clip). */
       @media (max-width: 640px) {
-        body:has(#authPage.auth-landing:not([hidden])) {
-          place-items: start center;
-        }
-
         #authPage.auth-landing .hero {
-          min-height: unset;
+          min-height: calc(
+            100svh
+            - max(28px, env(safe-area-inset-top, 0px))
+            - max(28px, env(safe-area-inset-bottom, 0px))
+          );
           aspect-ratio: unset;
           overflow: visible;
-          justify-content: flex-start;
-        }
-
-        #authPage.auth-landing .hero .copy {
-          margin-top: clamp(10px, 2.5vmin, 18px);
-        }
-
-        #authPage.auth-landing .hero-auth-cta {
-          margin-top: clamp(14px, 3.5vmin, 20px);
+          justify-content: center;
         }
       }
 
