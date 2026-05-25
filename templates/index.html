@@ -432,11 +432,20 @@
         position: fixed;
         inset: 0;
         z-index: 160;
-        display: grid;
-        place-items: center;
-        padding: 28px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100dvh;
+        min-height: 100svh;
+        padding:
+          max(28px, env(safe-area-inset-top, 0px))
+          max(16px, env(safe-area-inset-right, 0px))
+          max(28px, env(safe-area-inset-bottom, 0px))
+          max(16px, env(safe-area-inset-left, 0px));
         background: rgba(5, 8, 21, 0.78);
         backdrop-filter: blur(8px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
       }
 
       .guest-disclaimer[hidden] {
@@ -447,6 +456,8 @@
         position: relative;
         width: min(520px, calc(100vw - 32px));
         min-height: clamp(200px, 42vh, 280px);
+        margin: auto;
+        flex-shrink: 0;
         border: 1px solid var(--line);
         border-radius: 18px;
         background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
@@ -484,11 +495,20 @@
         position: fixed;
         inset: 0;
         z-index: 170;
-        display: grid;
-        place-items: center;
-        padding: 28px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100dvh;
+        min-height: 100svh;
+        padding:
+          max(28px, env(safe-area-inset-top, 0px))
+          max(16px, env(safe-area-inset-right, 0px))
+          max(28px, env(safe-area-inset-bottom, 0px))
+          max(16px, env(safe-area-inset-left, 0px));
         background: rgba(5, 8, 21, 0.55);
         backdrop-filter: blur(4px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
       }
 
       .guest-device-notice[hidden] {
@@ -498,6 +518,8 @@
       .guest-device-notice-panel {
         position: relative;
         width: min(480px, calc(100vw - 32px));
+        margin: auto;
+        flex-shrink: 0;
         border: 1px solid rgba(251, 146, 60, 0.45);
         border-radius: 18px;
         background: linear-gradient(180deg, rgba(30, 18, 8, 0.95), rgba(12, 10, 18, 0.92));
@@ -4450,6 +4472,11 @@
 
       function clearSession() {
         localStorage.removeItem(STORAGE_KEYS.SESSION);
+        try {
+          sessionStorage.removeItem(TRACKER_ENTRY_NOTICE_KEY);
+        } catch {
+          /* ignore */
+        }
       }
 
       function loadSleepStore() {
@@ -4539,6 +4566,8 @@
         if (!overlay) return;
         overlay.hidden = true;
         overlay.setAttribute("inert", "");
+        document.documentElement.style.overflow = "";
+        document.body.style.overflow = "";
       }
 
       function hideGuestDeviceNotice() {
@@ -4600,6 +4629,8 @@
         if (!overlay) return;
         overlay.hidden = false;
         overlay.removeAttribute("inert");
+        document.documentElement.style.overflow = "hidden";
+        document.body.style.overflow = "hidden";
       }
 
       function showAuthLandingMode() {
@@ -4635,6 +4666,21 @@
         $("countryRankingsPage").hidden = pageName !== "rankings";
         if (pageName === "auth") showAuthLandingMode();
         if (pageName === "progress") renderAiProgressPage();
+        if (pageName === "tracker") maybeShowBedtimeDeviceNoticeOnTrackerEntry();
+      }
+
+      const TRACKER_ENTRY_NOTICE_KEY = "sleepChallenge.trackerEntryNoticeShown";
+
+      function maybeShowBedtimeDeviceNoticeOnTrackerEntry() {
+        const session = getCurrentSessionOrNull();
+        if (!session) return;
+        try {
+          if (sessionStorage.getItem(TRACKER_ENTRY_NOTICE_KEY) === "1") return;
+          sessionStorage.setItem(TRACKER_ENTRY_NOTICE_KEY, "1");
+        } catch {
+          /* ignore */
+        }
+        showBedtimeDeviceNotice();
       }
 
       let countryFlagTipTimer = null;
@@ -5303,7 +5349,6 @@
         store[session.email] = bucket;
         saveSleepStore(store);
         renderSleepMeta();
-        showBedtimeDeviceNotice();
         toast("ok", "Bedtime tracking started. It keeps running until you press wakeup.");
       }
 
