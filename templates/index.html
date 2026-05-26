@@ -1925,6 +1925,11 @@
 
       #countryRankingsPage .feedback-page {
         padding-bottom: 58px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        max-height: min(calc(100dvh - 56px), 920px);
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
       }
 
       .rankings-page {
@@ -2467,6 +2472,15 @@
           align-items: center;
           justify-content: flex-start;
           width: 100%;
+        }
+
+        .rankings-nations-grid {
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          gap: 10px 6px;
+        }
+
+        .rankings-nation-name {
+          font-size: clamp(9px, 2.4vw, 11px);
         }
       }
 
@@ -3972,37 +3986,71 @@
 
       /** Logged-in preview board when fewer than MEMBER_PREVIEW_MIN_REAL_SLEEPERS on the server (not stored in DB). */
       const MEMBER_PREVIEW_MIN_REAL_SLEEPERS = 3;
-      const MEMBER_PREVIEW_YOUR_RANK = 5;
 
-      const MEMBER_PREVIEW_RANKINGS = {
-        nations: [
-          { rank: 1, country: "South Korea" },
-          { rank: 2, country: "Japan" },
-          { rank: 3, country: "United States" },
-          { rank: 4, country: "Canada" },
-          { rank: 5, country: "United Kingdom" },
-        ],
-        topSleepers: [
-          { rank: 1, name: "Luna", country: "South Korea", score: 286 },
-          { rank: 2, name: "Noah", country: "Japan", score: 254 },
-          { rank: 3, name: "Mia", country: "United States", score: 231 },
-          { rank: 4, name: "Leo", country: "Canada", score: 218 },
-          { rank: 5, name: "Preview You", country: "South Korea", score: 241 },
-          { rank: 6, name: "Ava", country: "United Kingdom", score: 198 },
-          { rank: 7, name: "Ethan", country: "Germany", score: 187 },
-          { rank: 8, name: "Sora", country: "Singapore", score: 176 },
-        ],
-        aroundSleepers: [
-          { rank: 1, name: "Kai", country: "Japan", score: 272 },
-          { rank: 2, name: "Luna", country: "South Korea", score: 264 },
-          { rank: 3, name: "Noah", country: "Japan", score: 251 },
-          { rank: 4, name: "Mia", country: "United States", score: 238 },
-          { rank: 5, name: "Preview You", country: "South Korea", score: 198 },
-          { rank: 6, name: "Leo", country: "Canada", score: 191 },
-          { rank: 7, name: "Ava", country: "United Kingdom", score: 184 },
-          { rank: 8, name: "Ethan", country: "Germany", score: 179 },
-        ],
-      };
+      /** Demo users as single objects; topPoints = 28d Top Sleepers, aroundPoints = 7d Around Your Rank. */
+      const MEMBER_PREVIEW_USERS = [
+        { id: "luna", nickname: "Luna", country: "South Korea", topPoints: 286, aroundPoints: 264 },
+        { id: "noah", nickname: "Noah", country: "Japan", topPoints: 254, aroundPoints: 251 },
+        { id: "mia", nickname: "Mia", country: "United States", topPoints: 231, aroundPoints: 238 },
+        { id: "leo", nickname: "Leo", country: "Canada", topPoints: 218, aroundPoints: 191 },
+        {
+          id: "demo-you",
+          nickname: "Preview You",
+          country: "South Korea",
+          topPoints: 241,
+          aroundPoints: 198,
+          email: "",
+        },
+        { id: "ava", nickname: "Ava", country: "United Kingdom", topPoints: 198, aroundPoints: 184 },
+        { id: "ethan", nickname: "Ethan", country: "Germany", topPoints: 187, aroundPoints: 179 },
+        { id: "sora", nickname: "Sora", country: "Singapore", topPoints: 176, aroundPoints: 172 },
+        { id: "kai", nickname: "Kai", country: "Japan", topPoints: 165, aroundPoints: 272 },
+      ];
+
+      function sortMemberPreviewUsers(users, pointsKey) {
+        return [...users]
+          .sort((a, b) => {
+            const diff = b[pointsKey] - a[pointsKey];
+            if (diff !== 0) return diff;
+            return String(a.nickname || "").localeCompare(String(b.nickname || ""));
+          })
+          .map((user, index) => ({
+            rank: index + 1,
+            name: user.nickname,
+            country: user.country,
+            score: user[pointsKey],
+            email: user.email || "",
+          }));
+      }
+
+      /** Logged-in preview Best Sleep Nations (not stored in DB). */
+      const MEMBER_PREVIEW_NATIONS = [
+        { country: "New Zealand", flag: "🇳🇿", points: 32 },
+        { country: "Kazakhstan", flag: "🇰🇿", points: 31 },
+        { country: "Singapore", flag: "🇸🇬", points: 30 },
+        { country: "Kenya", flag: "🇰🇪", points: 29 },
+        { country: "Malaysia", flag: "🇲🇾", points: 28 },
+        { country: "Japan", flag: "🇯🇵", points: 27 },
+        { country: "Australia", flag: "🇦🇺", points: 26 },
+        { country: "Netherlands", flag: "🇳🇱", points: 25 },
+        { country: "Germany", flag: "🇩🇪", points: 24 },
+        { country: "Brazil", flag: "🇧🇷", points: 23 },
+      ];
+
+      function sortMemberPreviewNations(nations) {
+        return [...nations]
+          .sort((a, b) => {
+            const diff = b.points - a.points;
+            if (diff !== 0) return diff;
+            return String(a.country || "").localeCompare(String(b.country || ""));
+          })
+          .map((nation, index) => ({
+            rank: index + 1,
+            country: nation.country,
+            flag: nation.flag,
+            points: nation.points,
+          }));
+      }
 
       const MIN_USER_AGE = 10;
       const MAX_USER_AGE = 24;
@@ -6690,28 +6738,25 @@
           String(session?.country || loadUsers()[session?.email]?.country || "").trim() ||
           "South Korea";
 
-        const cloneRow = (row) => ({
-          rank: row.rank,
-          name: row.name,
-          country: row.country,
-          score: row.score,
-          email: row.email || "",
+        const users = MEMBER_PREVIEW_USERS.map((user) => {
+          if (user.id !== "demo-you") return { ...user };
+          return {
+            ...user,
+            nickname: myName,
+            country: myCountry,
+            email: myEmail,
+          };
         });
 
-        const sleepers = MEMBER_PREVIEW_RANKINGS.topSleepers.map(cloneRow);
-        const aroundSleepers = MEMBER_PREVIEW_RANKINGS.aroundSleepers.map(cloneRow);
-        const nations = MEMBER_PREVIEW_RANKINGS.nations.map((row) => ({ ...row }));
+        const sleepers = sortMemberPreviewUsers(users, "topPoints");
+        const aroundSleepers = sortMemberPreviewUsers(users, "aroundPoints");
+        const nations = sortMemberPreviewNations(MEMBER_PREVIEW_NATIONS);
 
-        for (const list of [sleepers, aroundSleepers]) {
-          const row = list.find((r) => r.rank === MEMBER_PREVIEW_YOUR_RANK);
-          if (!row) continue;
-          row.name = myName;
-          row.country = myCountry;
-          if (myEmail) row.email = myEmail;
-        }
-
-        const youTop = sleepers.find((r) => r.rank === MEMBER_PREVIEW_YOUR_RANK);
-        const youAround = aroundSleepers.find((r) => r.rank === MEMBER_PREVIEW_YOUR_RANK);
+        const matchYou = (row) =>
+          (myEmail && row.email && normalizeEmail(row.email) === myEmail) ||
+          (!myEmail && row.name === myName);
+        const youTop = sleepers.find(matchYou);
+        const youAround = aroundSleepers.find(matchYou);
 
         return {
           nations,
@@ -6720,14 +6765,14 @@
           viewer: {
             eligible: true,
             message: "",
-            rank: MEMBER_PREVIEW_YOUR_RANK,
-            score: youAround?.score ?? 198,
+            rank: youAround?.rank ?? null,
+            score: youAround?.score ?? null,
           },
           viewerTop: {
             eligible: true,
             message: "",
-            rank: MEMBER_PREVIEW_YOUR_RANK,
-            score: youTop?.score ?? 241,
+            rank: youTop?.rank ?? null,
+            score: youTop?.score ?? null,
           },
           fromPreview: true,
         };
@@ -6808,6 +6853,33 @@
         top: false,
         nations: false,
       };
+
+      const RANKINGS_AROUND_DEFAULT = 5;
+      const RANKINGS_AROUND_EXPANDED = 10;
+      const RANKINGS_TOP_DEFAULT = 10;
+      const RANKINGS_TOP_EXPANDED = 30;
+      const RANKINGS_NATIONS_DEFAULT = 10;
+      const RANKINGS_NATIONS_EXPANDED = 30;
+
+      /** Centered window on the logged-in user; each row stays one sleeper object. */
+      function sliceAroundRankRows(sleepers, centerIndex, maxRows) {
+        if (!Array.isArray(sleepers) || centerIndex < 0 || !sleepers.length) return [];
+        const limit = Math.max(1, Math.min(maxRows, sleepers.length));
+        let start = centerIndex - Math.floor((limit - 1) / 2);
+        let end = start + limit;
+        if (start < 0) {
+          start = 0;
+          end = limit;
+        }
+        if (end > sleepers.length) {
+          end = sleepers.length;
+          start = Math.max(0, end - limit);
+        }
+        return sleepers.slice(start, end).map((row, offset) => ({
+          ...row,
+          isYou: start + offset === centerIndex,
+        }));
+      }
 
       function findMySleeperIndex(sleepers, { email, name, country }, options = {}) {
         if (options.emailOnly && email) {
@@ -6990,17 +7062,19 @@
         const aroundList = $("rankingsAroundList");
         const aroundEmpty = $("rankingsAroundEmpty");
         const aroundMoreBtn = $("rankingsAroundMoreBtn");
-        if (aroundMoreBtn) aroundMoreBtn.hidden = true;
+        const aroundMaxRows = rankingsMemberExpand.around
+          ? RANKINGS_AROUND_EXPANDED
+          : RANKINGS_AROUND_DEFAULT;
+        const aroundCanExpand = aroundSleepers.length > RANKINGS_AROUND_DEFAULT;
+        if (aroundMoreBtn) {
+          aroundMoreBtn.hidden = !aroundCanExpand;
+          aroundMoreBtn.textContent = rankingsMemberExpand.around ? "View less ›" : "View more ›";
+        }
 
         if (aroundEligible && aroundIndex >= 0) {
           if (aroundEmpty) aroundEmpty.hidden = true;
           if (aroundList) aroundList.hidden = false;
-          const aroundRows = [];
-          if (aroundIndex > 0) aroundRows.push({ ...aroundSleepers[aroundIndex - 1], isYou: false });
-          aroundRows.push({ ...aroundSleepers[aroundIndex], isYou: true });
-          if (aroundIndex < aroundSleepers.length - 1) {
-            aroundRows.push({ ...aroundSleepers[aroundIndex + 1], isYou: false });
-          }
+          const aroundRows = sliceAroundRankRows(aroundSleepers, aroundIndex, aroundMaxRows);
           renderRankingsPanelList(aroundList, aroundRows, (row) => {
             const { alpha2 } = resolveCountryForFlag(row.country);
             return renderRankingsSleeperRow({
@@ -7027,9 +7101,12 @@
         const topList = $("rankingsTopSleepersList");
         const topEmpty = $("rankingsTopEmpty");
         const topMoreBtn = $("rankingsTopMoreBtn");
-        const topLimit = rankingsMemberExpand.top ? sleepers.length : 10;
+        const topLimit = rankingsMemberExpand.top
+          ? Math.min(RANKINGS_TOP_EXPANDED, sleepers.length)
+          : Math.min(RANKINGS_TOP_DEFAULT, sleepers.length);
+        const topCanExpand = sleepers.length > RANKINGS_TOP_DEFAULT;
         if (topMoreBtn) {
-          topMoreBtn.hidden = sleepers.length <= 10;
+          topMoreBtn.hidden = !topCanExpand;
           topMoreBtn.textContent = rankingsMemberExpand.top ? "View less ›" : "View full ranking ›";
         }
         if (topEligible) {
@@ -7065,11 +7142,14 @@
         }
 
         const nationsMoreBtn = $("rankingsNationsMoreBtn");
-        const nationsLimit = rankingsMemberExpand.nations ? nations.length : 10;
+        const nationsLimit = rankingsMemberExpand.nations
+          ? Math.min(RANKINGS_NATIONS_EXPANDED, nations.length)
+          : Math.min(RANKINGS_NATIONS_DEFAULT, nations.length);
         const nationsEmpty = $("rankingsNationsEmpty");
         const nationsGrid = $("rankingsNationsGrid");
+        const nationsCanExpand = nations.length > RANKINGS_NATIONS_DEFAULT;
         if (nationsMoreBtn) {
-          nationsMoreBtn.hidden = nations.length <= 10;
+          nationsMoreBtn.hidden = !nationsCanExpand;
           nationsMoreBtn.textContent = rankingsMemberExpand.nations ? "View less ›" : "View full ranking ›";
         }
         if (nationsGrid) {
@@ -7083,12 +7163,21 @@
           } else {
             if (nationsEmpty) nationsEmpty.hidden = true;
             for (const row of nationRows) {
-              const { alpha2, displayName } = resolveCountryForFlag(row.country);
+              let flag = "🏳️";
+              let label = row.country || "—";
+              if (row.flag) {
+                flag = row.flag;
+                label = row.country || "—";
+              } else {
+                const { alpha2, displayName } = resolveCountryForFlag(row.country);
+                flag = alpha2ToFlagEmoji(alpha2) || "🏳️";
+                label = displayName || row.country || "—";
+              }
               nationsGrid.appendChild(
                 renderRankingsNationCell({
                   rank: row.rank,
-                  flag: alpha2ToFlagEmoji(alpha2),
-                  label: displayName || row.country || "—",
+                  flag,
+                  label,
                 })
               );
             }
