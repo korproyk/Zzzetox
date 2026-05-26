@@ -2668,20 +2668,30 @@
         display: none !important;
       }
 
-      .sleep-score-level-subline {
-        font-size: clamp(12px, 2.2vw, 14px);
-        font-weight: 600;
-        line-height: 1.45;
-        color: rgba(196, 181, 253, 0.82);
-        max-width: 28ch;
+      .sleep-score-line.sleep-score-level-subline {
+        font-size: clamp(10px, 2.65vw, 13px);
+        font-weight: 400;
+        line-height: 1.35;
+        letter-spacing: -0.015em;
+        color: rgba(255, 255, 255, 0.48);
+        max-width: 100%;
+        white-space: nowrap;
+      }
+
+      @media (max-width: 380px) {
+        .sleep-score-line.sleep-score-level-subline {
+          font-size: 10px;
+          letter-spacing: -0.02em;
+        }
       }
 
       .sleep-score-last-week {
         margin: 0;
-        font-size: clamp(13px, 2.4vw, 15px);
-        font-weight: 650;
-        line-height: 1.45;
-        color: rgba(255, 255, 255, 0.78);
+        font-size: clamp(12px, 2.4vw, 14px);
+        font-weight: 400;
+        line-height: 1.4;
+        letter-spacing: -0.01em;
+        color: rgba(255, 255, 255, 0.48);
       }
 
       .sleep-score-last-week[hidden] {
@@ -2721,6 +2731,25 @@
         letter-spacing: -0.02em;
         line-height: 1;
         color: rgba(255, 255, 255, 0.72);
+      }
+
+      /* Logged-in: emphasize weekly Sleep Point above This Week badge */
+      .sleep-score-point-display--member .sleep-score-point-row {
+        align-items: baseline;
+        gap: clamp(10px, 2.8vw, 18px);
+      }
+
+      .sleep-score-point-display--member .sleep-score-value {
+        font-size: clamp(48px, 13vw, 80px);
+        font-weight: 900;
+        letter-spacing: -0.055em;
+        line-height: 0.95;
+      }
+
+      .sleep-score-point-display--member .sleep-score-points-label {
+        font-size: clamp(17px, 3.6vw, 26px);
+        font-weight: 800;
+        padding-bottom: 0.12em;
       }
 
       .sleep-score-level {
@@ -5109,6 +5138,11 @@
         if (badge) badge.hidden = !show;
       }
 
+      function setSleepScoreMemberPointDisplay(isMember) {
+        const display = $("sleepScorePointDisplay");
+        if (display) display.classList.toggle("sleep-score-point-display--member", Boolean(isMember));
+      }
+
       function setSleepScoreLastWeekLineVisible(show, hoursSlept) {
         const line = $("sleepScoreLastWeekLine");
         if (!line) return;
@@ -5126,6 +5160,7 @@
         const isMember = Boolean(session && session.email && !isGuestSession(session));
         if (guestNote) guestNote.hidden = !session || !isGuestSession(session);
         setSleepScorePeriodBadgeVisible(isMember);
+        setSleepScoreMemberPointDisplay(isMember);
         if (!isMember) setSleepScoreLastWeekLineVisible(false);
       }
 
@@ -6434,6 +6469,7 @@
         const lvlEl = $("sleepScoreLevel");
         const hero = $("sleepScoreHero");
         setSleepScoreLastWeekLineVisible(false);
+        setSleepScoreMemberPointDisplay(false);
         if (pointDisplay) pointDisplay.hidden = false;
         if (valEl) valEl.textContent = "0";
         if (lvlEl) {
@@ -6456,6 +6492,7 @@
         const lvlEl = $("sleepScoreLevel");
         const hero = $("sleepScoreHero");
         setSleepScoreLastWeekLineVisible(false);
+        setSleepScoreMemberPointDisplay(false);
         const age = getSessionAgeForScoring(session);
         const { bucket } = getSleepBucket(session.email);
         const list = bucket.history || [];
@@ -6512,6 +6549,7 @@
         }
         setSleepLevelImage(lvForImage);
         setSleepScoreLastWeekLineVisible(true, hoursLast7);
+        setSleepScoreMemberPointDisplay(true);
         renderSleepScoreDetailStructured({
           hoursSlept: hoursLast7,
           score: weeklyPoint,
@@ -6912,6 +6950,7 @@
           hideSleepMetricTip();
           setSleepScorePeriodBadgeVisible(false);
           setSleepScoreLastWeekLineVisible(false);
+          setSleepScoreMemberPointDisplay(false);
           if (hero) hero.classList.remove("sleep-score-hero--structured");
           if (pointDisplay) pointDisplay.hidden = true;
           if (valEl) {
