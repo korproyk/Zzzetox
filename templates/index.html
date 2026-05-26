@@ -3853,7 +3853,6 @@
             </section>
           </div>
         </div>
-        <button type="button" class="return-sleep-btn" id="rankingsReturnSleepBtn">Return to sleep</button>
       </section>
     </main>
 
@@ -3987,25 +3986,70 @@
       /** Logged-in preview board when fewer than MEMBER_PREVIEW_MIN_REAL_SLEEPERS on the server (not stored in DB). */
       const MEMBER_PREVIEW_MIN_REAL_SLEEPERS = 3;
 
-      /** Demo users as single objects; topPoints = 28d Top Sleepers, aroundPoints = 7d Around Your Rank. */
-      const MEMBER_PREVIEW_USERS = [
-        { id: "luna", nickname: "Luna", country: "South Korea", topPoints: 286, aroundPoints: 264 },
-        { id: "noah", nickname: "Noah", country: "Japan", topPoints: 254, aroundPoints: 251 },
-        { id: "mia", nickname: "Mia", country: "United States", topPoints: 231, aroundPoints: 238 },
-        { id: "leo", nickname: "Leo", country: "Canada", topPoints: 218, aroundPoints: 191 },
-        {
-          id: "demo-you",
-          nickname: "Preview You",
-          country: "South Korea",
-          topPoints: 241,
-          aroundPoints: 198,
-          email: "",
-        },
-        { id: "ava", nickname: "Ava", country: "United Kingdom", topPoints: 198, aroundPoints: 184 },
-        { id: "ethan", nickname: "Ethan", country: "Germany", topPoints: 187, aroundPoints: 179 },
-        { id: "sora", nickname: "Sora", country: "Singapore", topPoints: 176, aroundPoints: 172 },
-        { id: "kai", nickname: "Kai", country: "Japan", topPoints: 165, aroundPoints: 272 },
+      /** Demo-only users (not stored in DB). Logged-in viewer is merged separately with live ranking sums. */
+      const MEMBER_PREVIEW_DEMO_USERS = [
+        { id: "luna", nickname: "Luna", country: "Republic of Korea", flag: "🇰🇷", topPoints: 50, aroundPoints: 30 },
+        { id: "noah", nickname: "Noah", country: "Japan", flag: "🇯🇵", topPoints: 48, aroundPoints: 29 },
+        { id: "mia", nickname: "Mia", country: "United States of America", flag: "🇺🇸", topPoints: 46, aroundPoints: 28 },
+        { id: "leo", nickname: "Leo", country: "Canada", flag: "🇨🇦", topPoints: 44, aroundPoints: 27 },
+        { id: "ava", nickname: "Ava", country: "United Kingdom of Great Britain and Northern Ireland", flag: "🇬🇧", topPoints: 42, aroundPoints: 26 },
+        { id: "ethan", nickname: "Ethan", country: "Germany", flag: "🇩🇪", topPoints: 40, aroundPoints: 25 },
+        { id: "sora", nickname: "Sora", country: "Singapore", flag: "🇸🇬", topPoints: 38, aroundPoints: 24 },
+        { id: "kai", nickname: "Kai", country: "Kazakhstan", flag: "🇰🇿", topPoints: 36, aroundPoints: 23 },
+        { id: "zara", nickname: "Zara", country: "Kenya", flag: "🇰🇪", topPoints: 34, aroundPoints: 22 },
+        { id: "marco", nickname: "Marco", country: "Brazil", flag: "🇧🇷", topPoints: 32, aroundPoints: 21 },
+        { id: "nina", nickname: "Nina", country: "New Zealand", flag: "🇳🇿", topPoints: 30, aroundPoints: 20 },
+        { id: "omar", nickname: "Omar", country: "Malaysia", flag: "🇲🇾", topPoints: 28, aroundPoints: 19 },
       ];
+
+      function flagEmojiForCountry(country) {
+        const { alpha2 } = resolveCountryForFlag(country);
+        return alpha2ToFlagEmoji(alpha2) || "🏳️";
+      }
+
+      /** Sum of nightly Sleep Points in a ranking window (matches server weeklySleepPoint). */
+      function computeRankingWindowSum(age, history, asOf, windowDays) {
+        const list = Array.isArray(history) ? history : [];
+        const indices = historyIndicesInWindow(list, asOf, windowDays);
+        let total = 0;
+        for (const i of indices) {
+          const score = scoreHistoryEntry(age, list, i);
+          if (score == null || score <= 0) continue;
+          total += score;
+        }
+        return total;
+      }
+
+      /** Logged-in member ranking scores from local sleep data (not Total Growth). */
+      function computeMemberRankingScores(session, asOf = new Date()) {
+        const email = normalizeEmail(session?.email || "");
+        const age = getSessionAgeForScoring(session);
+        const { bucket } = getSleepBucket(email);
+        const history = bucket?.history || [];
+        return {
+          topPoints: computeRankingWindowSum(age, history, asOf, RANKING_WINDOW_DAYS),
+          aroundPoints: computeRankingWindowSum(age, history, asOf, AROUND_RANKING_WINDOW_DAYS),
+        };
+      }
+
+      function buildMemberPreviewViewerUser(session, scores) {
+        const myEmail = normalizeEmail(session?.email || "");
+        const myName = String(session?.name || "").trim() || "You";
+        const myCountry =
+          String(session?.country || loadUsers()[session?.email]?.country || "").trim() ||
+          "Republic of Korea";
+        return {
+          id: "viewer",
+          isViewer: true,
+          isDemo: false,
+          nickname: myName,
+          country: myCountry,
+          flag: flagEmojiForCountry(myCountry),
+          email: myEmail,
+          topPoints: scores.topPoints,
+          aroundPoints: scores.aroundPoints,
+        };
+      }
 
       function sortMemberPreviewUsers(users, pointsKey) {
         return [...users]
@@ -4014,13 +4058,84 @@
             if (diff !== 0) return diff;
             return String(a.nickname || "").localeCompare(String(b.nickname || ""));
           })
-          .map((user, index) => ({
-            rank: index + 1,
-            name: user.nickname,
-            country: user.country,
-            score: user[pointsKey],
-            email: user.email || "",
-          }));
+          .map((user, index) => {
+            const points = user[pointsKey];
+            return {
+              rank: index + 1,
+              nickname: user.nickname,
+              name: user.nickname,
+              country: user.country,
+              flag: user.flag || flagEmojiForCountry(user.country),
+              points,
+              score: points,
+              email: user.email || "",
+              isViewer: Boolean(user.isViewer),
+              isDemo: user.isDemo !== false && !user.isViewer,
+            };
+          });
+      }
+
+      function rerankSleeperRowsByScore(rows) {
+        return [...(Array.isArray(rows) ? rows : [])]
+          .sort((a, b) => {
+            const diff = (b.score ?? b.points ?? 0) - (a.score ?? a.points ?? 0);
+            if (diff !== 0) return diff;
+            return String(a.nickname || a.name || "").localeCompare(String(b.nickname || b.name || ""));
+          })
+          .map((row, index) => ({ ...row, rank: index + 1 }));
+      }
+
+      function patchViewerRankingRow(rows, email, points) {
+        if (!email) return rows;
+        const norm = normalizeEmail(email);
+        return (Array.isArray(rows) ? rows : []).map((row) => {
+          if (row.isViewer) return { ...row, score: points, points };
+          if (row.email && normalizeEmail(row.email) === norm) {
+            return { ...row, score: points, points, isViewer: true };
+          }
+          return row;
+        });
+      }
+
+      function applyLiveViewerScoresToRankings(
+        { nations, sleepers, aroundSleepers, viewer, viewerTop },
+        session,
+        { isPreview = false } = {}
+      ) {
+        if (!session?.email || isGuestSession(session)) {
+          return { nations, sleepers, aroundSleepers, viewer, viewerTop };
+        }
+        const myEmail = normalizeEmail(session.email);
+        const live = computeMemberRankingScores(session);
+        let topRows = patchViewerRankingRow(sleepers, myEmail, live.topPoints);
+        let aroundRows = patchViewerRankingRow(aroundSleepers, myEmail, live.aroundPoints);
+        if (isPreview) {
+          topRows = rerankSleeperRowsByScore(topRows);
+          aroundRows = rerankSleeperRowsByScore(aroundRows);
+        }
+        const aroundIdx = findMySleeperIndex(aroundRows, { email: myEmail }, { emailOnly: true });
+        const topIdx = findMySleeperIndex(topRows, { email: myEmail }, { emailOnly: true });
+        const nextViewer = {
+          ...(viewer || {}),
+          eligible: isPreview ? true : Boolean(viewer?.eligible),
+          message: viewer?.message || "",
+          score: live.aroundPoints,
+          rank: aroundIdx >= 0 ? aroundRows[aroundIdx].rank : viewer?.rank ?? null,
+        };
+        const nextViewerTop = {
+          ...(viewerTop || {}),
+          eligible: isPreview ? true : Boolean(viewerTop?.eligible),
+          message: viewerTop?.message || "",
+          score: live.topPoints,
+          rank: topIdx >= 0 ? topRows[topIdx].rank : viewerTop?.rank ?? null,
+        };
+        return {
+          nations,
+          sleepers: topRows,
+          aroundSleepers: aroundRows,
+          viewer: nextViewer,
+          viewerTop: nextViewerTop,
+        };
       }
 
       /** Logged-in preview Best Sleep Nations (not stored in DB). */
@@ -4889,9 +5004,12 @@
           .filter((row) => !isGuestAccountEmail(row?.email))
           .map((row) => ({
             rank: Number(row.rank) || 0,
-            name: row.name,
+            nickname: row.nickname || row.name,
+            name: row.name || row.nickname,
             country: row.country,
-            score: row.score,
+            flag: row.flag || "",
+            points: row.points != null ? Number(row.points) : Number(row.score),
+            score: row.score != null ? Number(row.score) : Number(row.points),
             email: row.email || "",
           }))
           .filter((row) => row.rank > 0);
@@ -6732,48 +6850,43 @@
       }
 
       function buildMemberPreviewRankings(session) {
-        const myEmail = normalizeEmail(session?.email || "");
-        const myName = String(session?.name || "").trim() || "You";
-        const myCountry =
-          String(session?.country || loadUsers()[session?.email]?.country || "").trim() ||
-          "South Korea";
-
-        const users = MEMBER_PREVIEW_USERS.map((user) => {
-          if (user.id !== "demo-you") return { ...user };
-          return {
-            ...user,
-            nickname: myName,
-            country: myCountry,
-            email: myEmail,
-          };
-        });
-
-        const sleepers = sortMemberPreviewUsers(users, "topPoints");
-        const aroundSleepers = sortMemberPreviewUsers(users, "aroundPoints");
+        const live = computeMemberRankingScores(session);
+        const demoUsers = MEMBER_PREVIEW_DEMO_USERS.map((user) => ({
+          ...user,
+          isDemo: true,
+          isViewer: false,
+          flag: user.flag || flagEmojiForCountry(user.country),
+        }));
+        const viewerUser = buildMemberPreviewViewerUser(session, live);
+        const sleepers = sortMemberPreviewUsers([...demoUsers, viewerUser], "topPoints");
+        const aroundSleepers = sortMemberPreviewUsers([...demoUsers, viewerUser], "aroundPoints");
         const nations = sortMemberPreviewNations(MEMBER_PREVIEW_NATIONS);
-
-        const matchYou = (row) =>
-          (myEmail && row.email && normalizeEmail(row.email) === myEmail) ||
-          (!myEmail && row.name === myName);
-        const youTop = sleepers.find(matchYou);
-        const youAround = aroundSleepers.find(matchYou);
+        const myEmail = normalizeEmail(session?.email || "");
+        const youTop = sleepers.find((row) => row.isViewer || (myEmail && row.email === myEmail));
+        const youAround = aroundSleepers.find((row) => row.isViewer || (myEmail && row.email === myEmail));
 
         return {
-          nations,
-          sleepers,
-          aroundSleepers,
-          viewer: {
-            eligible: true,
-            message: "",
-            rank: youAround?.rank ?? null,
-            score: youAround?.score ?? null,
-          },
-          viewerTop: {
-            eligible: true,
-            message: "",
-            rank: youTop?.rank ?? null,
-            score: youTop?.score ?? null,
-          },
+          ...applyLiveViewerScoresToRankings(
+            {
+              nations,
+              sleepers,
+              aroundSleepers,
+              viewer: {
+                eligible: true,
+                message: "",
+                rank: youAround?.rank ?? null,
+                score: live.aroundPoints,
+              },
+              viewerTop: {
+                eligible: true,
+                message: "",
+                rank: youTop?.rank ?? null,
+                score: live.topPoints,
+              },
+            },
+            session,
+            { isPreview: true }
+          ),
           fromPreview: true,
         };
       }
@@ -6886,6 +6999,7 @@
           const normEmail = normalizeEmail(email);
           for (let i = 0; i < sleepers.length; i++) {
             const row = sleepers[i];
+            if (row.isViewer) return i;
             if (row.email && normalizeEmail(row.email) === normEmail) return i;
           }
           return -1;
@@ -6940,6 +7054,12 @@
           li.appendChild(pt);
         }
         return li;
+      }
+
+      function rankingsRowFlag(row) {
+        if (row?.flag) return row.flag;
+        const { alpha2 } = resolveCountryForFlag(row?.country);
+        return alpha2ToFlagEmoji(alpha2) || "🏳️";
       }
 
       function renderRankingsNationCell({ rank, flag, label }) {
@@ -7036,6 +7156,19 @@
         myCountryRaw,
         isPreview = false,
       }) {
+        const session = getCurrentSessionOrNull();
+        ({
+          nations,
+          sleepers,
+          aroundSleepers,
+          viewer,
+          viewerTop,
+        } = applyLiveViewerScoresToRankings(
+          { nations, sleepers, aroundSleepers, viewer, viewerTop },
+          session,
+          { isPreview }
+        ));
+
         const previewNote = $("rankingsPreviewNote");
         const memberInfo = $("rankingsMemberInfoNote");
         if (previewNote) previewNote.hidden = !isPreview;
@@ -7047,7 +7180,10 @@
           ? findMySleeperIndex(aroundSleepers, { email: myEmail }, { emailOnly: true })
           : -1;
         const myRank = aroundEligible && viewer?.rank != null ? viewer.rank : null;
-        const myScore = aroundEligible && viewer?.score != null ? viewer.score : null;
+        const myScore =
+          aroundEligible && viewer?.score != null && viewer?.score !== undefined
+            ? viewer.score
+            : null;
         const { alpha2: myAlpha2 } = resolveCountryForFlag(myCountryRaw);
 
         const rankEl = $("rankingsMyRankValue");
@@ -7057,7 +7193,10 @@
         if (rankEl) rankEl.textContent = myRank ? `#${myRank}` : "#—";
         if (flagEl) flagEl.textContent = alpha2ToFlagEmoji(myAlpha2) || "🏳️";
         if (nameEl) nameEl.textContent = myName || "—";
-        if (scoreEl) scoreEl.textContent = myScore != null && myScore > 0 ? `${myScore} pt` : "— pt";
+        if (scoreEl) {
+          scoreEl.textContent =
+            myScore != null && Number.isFinite(myScore) ? `${myScore} pt` : "— pt";
+        }
 
         const aroundList = $("rankingsAroundList");
         const aroundEmpty = $("rankingsAroundEmpty");
@@ -7075,18 +7214,17 @@
           if (aroundEmpty) aroundEmpty.hidden = true;
           if (aroundList) aroundList.hidden = false;
           const aroundRows = sliceAroundRankRows(aroundSleepers, aroundIndex, aroundMaxRows);
-          renderRankingsPanelList(aroundList, aroundRows, (row) => {
-            const { alpha2 } = resolveCountryForFlag(row.country);
-            return renderRankingsSleeperRow({
+          renderRankingsPanelList(aroundList, aroundRows, (row) =>
+            renderRankingsSleeperRow({
               rank: row.rank,
-              flag: alpha2ToFlagEmoji(alpha2),
-              label: row.name || "—",
-              points: row.score,
+              flag: rankingsRowFlag(row),
+              label: row.nickname || row.name || "—",
+              points: row.points != null ? row.points : row.score,
               highlight: row.isYou,
               showYouTag: true,
               plainRank: true,
-            });
-          });
+            })
+          );
         } else {
           if (aroundList) {
             aroundList.hidden = true;
@@ -7116,15 +7254,14 @@
             topList,
             sleepers.slice(0, topLimit),
             (row) => {
-              const { alpha2 } = resolveCountryForFlag(row.country);
               const highlight = Boolean(
                 myEmail && row.email && normalizeEmail(row.email) === normalizeEmail(myEmail)
               );
               return renderRankingsSleeperRow({
                 rank: row.rank,
-                flag: alpha2ToFlagEmoji(alpha2),
-                label: row.name || "—",
-                points: row.score,
+                flag: rankingsRowFlag(row),
+                label: row.nickname || row.name || "—",
+                points: row.points != null ? row.points : row.score,
                 highlight,
               });
             },
@@ -7363,10 +7500,6 @@
         }
         renderSleepScorePage();
         showPage("score");
-      });
-
-      $("rankingsReturnSleepBtn").addEventListener("click", () => {
-        goTrackerFromFeedback();
       });
 
       $("aiFeedbackRetryBtn").addEventListener("click", () => {
