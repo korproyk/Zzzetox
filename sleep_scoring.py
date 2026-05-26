@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import math
 from datetime import datetime, timedelta, timezone
 
 _HOUR_EPS = 1.0 / 3600.0
+MIN_VALID_SLEEP_HOURS = 0.5  # 30 minutes; shorter sleeps are invalid for scoring
 MAX_SCORABLE_SLEEP_HOURS = 16.0
 RANKING_WINDOW_DAYS = 7
 RANKING_MIN_RECORDS = 3
@@ -72,9 +74,30 @@ def is_near_zero_sleep_hours(hours: float) -> bool:
     return hours <= _HOUR_EPS
 
 
+def is_valid_sleep_hours(hours: float) -> bool:
+    """True when duration is scorable (≥30 min, finite, non-negative)."""
+    if not math.isfinite(hours) or hours < 0:
+        return False
+    return hours >= MIN_VALID_SLEEP_HOURS
+
+
+def clamp_sleep_point(score: float | int | None) -> int:
+    if score is None or not math.isfinite(float(score)):
+        return 0
+    return int(round(max(0.0, min(100.0, float(score)))))
+
+
 def effective_sleep_hours_from_ms(duration_ms: float | int | None) -> float:
     """Clamp abnormally long sleeps so scoring stays stable."""
-    hours = max(0.0, float(duration_ms or 0) / 3_600_000)
+    try:
+        raw = float(duration_ms or 0)
+    except (TypeError, ValueError):
+        raw = 0.0
+    if not math.isfinite(raw):
+        return 0.0
+    hours = max(0.0, raw / 3_600_000)
+    if not math.isfinite(hours):
+        return 0.0
     if hours > MAX_SCORABLE_SLEEP_HOURS:
         return MAX_SCORABLE_SLEEP_HOURS
     return hours
@@ -135,26 +158,6 @@ def duration_hours_score(hours: float, lo: float, hi: float) -> int:
     return 100
 
 
-def zero_sleep_special_score(history: list, dur_lo: float) -> int:
-    list_slice = history[-7:] if history else []
-    hours_list = [max(0.0, float(e.get("durationMs") or 0) / 3_600_000) for e in list_slice]
-    zero_nights = sum(1 for h in hours_list if is_near_zero_sleep_hours(h))
-    avg_h = sum(hours_list) / len(hours_list) if hours_list else 0.0
-    lo = float(dur_lo) or 7.0
-
-    if is_near_zero_sleep_hours(avg_h):
-        if zero_nights >= 2 or (len(list_slice) >= 3 and zero_nights / len(list_slice) >= 0.5):
-            return 0
-        return 1
-    if avg_h >= lo:
-        return 5
-    if avg_h >= lo * 0.65:
-        return 4
-    if avg_h >= 4:
-        return 3
-    return 2
-
-
 def _score_history_entry(age: int | None, history: list, index: int) -> int | None:
     if index < 0 or index >= len(history):
         return None
@@ -166,16 +169,14 @@ def _score_history_entry(age: int | None, history: list, index: int) -> int | No
         return None
     rec_h = recommended_bedtime_sleep_hours(age)
     hours_slept = effective_sleep_hours_from_ms(entry.get("durationMs"))
+    if not is_valid_sleep_hours(hours_slept):
+        return 0
+
     dur_lo, dur_hi = recommended_sleep_range_hours(age)
-    prefix = history[: index + 1]
-
-    if is_near_zero_sleep_hours(hours_slept):
-        return zero_sleep_special_score(prefix, dur_lo)
-
     diff_h = abs(actual_h - rec_h)
     bedtime_score = sleep_score_from_bedtime_diff_hours(diff_h)
     duration_score = duration_hours_score(hours_slept, dur_lo, dur_hi)
-    return round((bedtime_score + duration_score) / 2)
+    return clamp_sleep_point((bedtime_score + duration_score) / 2)
 
 
 def compute_latest_sleep_score(age: int | None, bucket: dict) -> int | None:
@@ -219,6 +220,12 @@ def ranking_user_stats(
     indices = history_indices_in_window(history, as_of, RANKING_WINDOW_DAYS)
     scores: list[int] = []
     for i in indices:
+        entry = history[i]
+        if not isinstance(entry, dict):
+            continue
+        hours = effective_sleep_hours_from_ms(entry.get("durationMs"))
+        if not is_valid_sleep_hours(hours):
+            continue
         score = _score_history_entry(age, history, i)
         if score is None:
             continue

@@ -1166,6 +1166,16 @@
 
       .linkbtn:hover { background: rgba(255,255,255,0.08); }
 
+      #trackerLogoutBtn {
+        pointer-events: auto;
+        touch-action: manipulation;
+      }
+
+      #trackerLogoutBtn:disabled {
+        opacity: 1;
+        cursor: pointer;
+      }
+
       .sleep-section {
         margin-top: 0;
         border-top: 0;
@@ -1398,6 +1408,9 @@
         gap: 10px;
         margin-bottom: 12px;
         overflow: visible;
+        position: relative;
+        z-index: 180;
+        pointer-events: auto;
       }
 
       .tracker-topbar-home {
@@ -3787,6 +3800,7 @@
       /** Reserved session email for guest mode (device-local sleep data only). */
       const GUEST_SESSION_EMAIL = "__guest__@zzzetox.local";
       const MAX_SCORABLE_SLEEP_HOURS = 16;
+      const MIN_VALID_SLEEP_HOURS = 0.5;
       const RANKING_WINDOW_DAYS = 7;
       const RANKING_MIN_RECORDS = 3;
       const RANKING_INELIGIBLE_MESSAGE = "Need at least 3 sleep records in the last 7 days.";
@@ -3794,18 +3808,18 @@
 
       const GUEST_DUMMY_RANKINGS = {
         nations: [
-          { rank: 1, country: "South Korea" },
-          { rank: 2, country: "Japan" },
-          { rank: 3, country: "United States" },
-          { rank: 4, country: "Canada" },
-          { rank: 5, country: "United Kingdom" },
+          { rank: 1, country: "South Korea", flag: "🇰🇷" },
+          { rank: 2, country: "Japan", flag: "🇯🇵" },
+          { rank: 3, country: "United States", flag: "🇺🇸" },
+          { rank: 4, country: "Canada", flag: "🇨🇦" },
+          { rank: 5, country: "United Kingdom", flag: "🇬🇧" },
         ],
         sleepers: [
-          { rank: 1, name: "Luna", country: "South Korea", score: 512 },
-          { rank: 2, name: "Noah", country: "Japan", score: 498 },
-          { rank: 3, name: "Mia", country: "United States", score: 487 },
-          { rank: 4, name: "Leo", country: "Canada", score: 476 },
-          { rank: 5, name: "Ava", country: "United Kingdom", score: 465 },
+          { rank: 1, name: "Luna", country: "South Korea", flag: "🇰🇷", score: 512 },
+          { rank: 2, name: "Noah", country: "Japan", flag: "🇯🇵", score: 498 },
+          { rank: 3, name: "Mia", country: "United States", flag: "🇺🇸", score: 487 },
+          { rank: 4, name: "Leo", country: "Canada", flag: "🇨🇦", score: 476 },
+          { rank: 5, name: "Ava", country: "United Kingdom", flag: "🇬🇧", score: 465 },
         ],
       };
 
@@ -5139,19 +5153,16 @@
         }
       }
 
-      /** While bedtime is active: only wakeup stays usable; logout/session chip are locked. */
+      /** While bedtime is active: lock home only; logout stays immediately available. */
       function applyTrackerSleepUiLock() {
         const session = getCurrentSessionOrNull();
         const locked = Boolean(session && getSleepBucket(session.email).bucket.activeStartAt);
         const logoutBtn = $("trackerLogoutBtn");
         const homeBtn = $("trackerHomeBtn");
         const topbar = $("sleepSection")?.querySelector(".tracker-topbar");
-        if (logoutBtn) logoutBtn.disabled = locked;
+        if (logoutBtn) logoutBtn.disabled = false;
         if (homeBtn) homeBtn.disabled = locked;
-        if (topbar) {
-          if (locked) topbar.setAttribute("inert", "");
-          else topbar.removeAttribute("inert");
-        }
+        if (topbar) topbar.removeAttribute("inert");
       }
 
       function updateActionAvailability() {
@@ -5610,8 +5621,9 @@
         applyButtonCounterState();
       });
 
-      // Logout
-      $("trackerLogoutBtn").addEventListener("click", () => {
+      function performTrackerLogout() {
+        hideBedtimeDeviceNotice();
+        hideGuestDeviceNotice();
         clearSession();
         refreshSessionUI("auth");
         renderSleepMeta();
@@ -5619,7 +5631,21 @@
         applyButtonCounterState();
         toast("ok", "Logged out successfully.");
         setActiveTab("login");
-      });
+      }
+
+      // Logout — always immediate (not blocked by overlays, inert, or sleep lock)
+      const trackerLogoutBtn = $("trackerLogoutBtn");
+      if (trackerLogoutBtn) {
+        trackerLogoutBtn.addEventListener(
+          "click",
+          (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            performTrackerLogout();
+          },
+          true
+        );
+      }
 
       $("returnSleepBtn").addEventListener("click", () => {
         const session = getCurrentSessionOrNull();
@@ -5766,19 +5792,25 @@
         else if (d < 2) s = 89 - 19 * (d - 1);
         else if (d < 4) s = 69 - (19 / 2) * (d - 2);
         else if (d < 6) s = 49 - (19 / 2) * (d - 4);
-        else s = Math.max(1, 29 - 7 * (d - 6));
-        return Math.round(Math.min(100, Math.max(1, s)));
+        else s = Math.max(0, 29 - 7 * (d - 6));
+        return clampSleepPoint(s);
       }
 
-      /** Sleep Level 1–5 from Sleep Point (0–19 → Lv.1, never Lv.0). */
+      function clampSleepPoint(score) {
+        const n = Number(score);
+        if (!Number.isFinite(n)) return 0;
+        return Math.round(Math.max(0, Math.min(100, n)));
+      }
+
+      /** Sleep Level 1–5 from Sleep Point (0–19 → Lv.1 … 80–100 → Lv.5). */
       function levelFromSleepScore(score) {
         const s = Number(score);
-        if (!Number.isFinite(s) || s <= 19) return 1;
-        if (s >= 90) return 5;
-        if (s >= 70) return 4;
-        if (s >= 50) return 3;
-        if (s >= 30) return 2;
-        return 1;
+        if (!Number.isFinite(s) || s < 0) return 1;
+        if (s <= 19) return 1;
+        if (s <= 39) return 2;
+        if (s <= 59) return 3;
+        if (s <= 79) return 4;
+        return 5;
       }
 
       /** Same age bands as `recommended_sleep_range_hours` in sleep_app.py */
@@ -5919,9 +5951,16 @@
       }
 
       function effectiveSleepHoursFromMs(durationMs) {
-        let hours = Math.max(0, Number(durationMs) || 0) / (1000 * 60 * 60);
+        const raw = Number(durationMs);
+        if (!Number.isFinite(raw)) return 0;
+        let hours = Math.max(0, raw) / (1000 * 60 * 60);
+        if (!Number.isFinite(hours)) return 0;
         if (hours > MAX_SCORABLE_SLEEP_HOURS) hours = MAX_SCORABLE_SLEEP_HOURS;
         return hours;
+      }
+
+      function isValidSleepHours(hours) {
+        return Number.isFinite(hours) && hours >= 0 && hours >= MIN_VALID_SLEEP_HOURS;
       }
 
       /** Night indices with bedAt in (asOf - days, asOf] using device clock. */
@@ -6030,17 +6069,13 @@
         if (actualH == null) return null;
         const recH = recommendedBedtimeSleepHours(age);
         const hoursSlept = effectiveSleepHoursFromMs(entry.durationMs);
+        if (!isValidSleepHours(hoursSlept)) return 0;
+
         const [durLo, durHi] = recommendedSleepRangeHoursClient(age);
-        const prefix = history.slice(0, index + 1);
-
-        if (isNearZeroSleepHours(hoursSlept)) {
-          return zeroSleepSpecialScoreForHistory(prefix, durLo);
-        }
-
         const diffH = Math.abs(actualH - recH);
         const bedtimeScore = sleepScoreFromBedtimeDiffHours(diffH);
         const durationScore = durationHoursScore(hoursSlept, durLo, durHi);
-        return Math.round((bedtimeScore + durationScore) / 2);
+        return clampSleepPoint((bedtimeScore + durationScore) / 2);
       }
 
       /** Latest-night sleep score for a registered user, or null if not scorable. */
@@ -6543,33 +6578,41 @@
               "Sample rankings for preview only. Sign up to join the real global sleep challenge.";
           }
         }
+        const guestNationRows = nations
+          .slice(0, 5)
+          .map((row) => ({ rank: row.rank, country: row.country, flag: row.flag }));
         renderRankingsPanelList(
           nationsEl,
-          nations.slice(0, 5),
-          (row) => {
-            const { alpha2, displayName } = resolveCountryForFlag(row.country);
-            return renderRankingsSleeperRow({
+          guestNationRows,
+          (row) =>
+            renderRankingsSleeperRow({
               rank: row.rank,
-              flag: alpha2ToFlagEmoji(alpha2),
-              label: displayName || row.country || "—",
+              flag: row.flag || "🏳️",
+              label: row.country || "—",
               points: null,
               highlight: false,
-            });
-          }
+            })
         );
+        const guestSleeperRows = sleepers
+          .slice(0, 5)
+          .map((row) => ({
+            rank: row.rank,
+            name: row.name,
+            country: row.country,
+            flag: row.flag,
+            score: row.score,
+          }));
         renderRankingsPanelList(
           sleepersEl,
-          sleepers.slice(0, 5),
-          (row) => {
-            const { alpha2 } = resolveCountryForFlag(row.country);
-            return renderRankingsSleeperRow({
+          guestSleeperRows,
+          (row) =>
+            renderRankingsSleeperRow({
               rank: row.rank,
-              flag: alpha2ToFlagEmoji(alpha2),
+              flag: row.flag || "🏳️",
               label: row.name || "—",
               points: row.score,
               highlight: false,
-            });
-          }
+            })
         );
       }
 
