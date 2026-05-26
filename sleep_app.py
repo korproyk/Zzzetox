@@ -1042,7 +1042,7 @@ def _build_global_rankings(viewer_email: str | None = None, as_of=None) -> dict:
 
 @app.route("/api/rankings", methods=["GET"])
 def api_rankings():
-    """Global sleep challenge rankings (last 7 days; members only on client)."""
+    """Global sleep challenge rankings (last 28 days; members only on client)."""
     viewer = _optional_auth_email()
     if viewer and is_guest_account_email(viewer):
         return jsonify(

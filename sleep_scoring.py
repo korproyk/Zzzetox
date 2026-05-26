@@ -8,9 +8,12 @@ from datetime import datetime, timedelta, timezone
 _HOUR_EPS = 1.0 / 3600.0
 MIN_VALID_SLEEP_HOURS = 0.5  # 30 minutes; shorter sleeps are invalid for scoring
 MAX_SCORABLE_SLEEP_HOURS = 16.0
-RANKING_WINDOW_DAYS = 7
+SLEEP_POINT_WINDOW_DAYS = 7
+AROUND_RANKING_WINDOW_DAYS = 7
+RANKING_WINDOW_DAYS = 28
 RANKING_MIN_RECORDS = 3
-RANKING_INELIGIBLE_MESSAGE = "Need at least 3 sleep records in the last 7 days."
+RANKING_INELIGIBLE_MESSAGE = "Need at least 3 sleep records in the last 28 days."
+AROUND_RANKING_INELIGIBLE_MESSAGE = "Need at least 3 sleep records in the last 7 days."
 
 
 def recommended_sleep_range_hours(age: int | None) -> tuple[float, float]:
@@ -196,7 +199,7 @@ def compute_weekly_average_sleep_point(
     if not history:
         return 0
     ref = as_of or datetime.now(timezone.utc)
-    indices = history_indices_in_window(history, ref, RANKING_WINDOW_DAYS)
+    indices = history_indices_in_window(history, ref, SLEEP_POINT_WINDOW_DAYS)
     total = 0
     count = 0
     for i in indices:
@@ -214,10 +217,11 @@ def ranking_user_stats(
     age: int | None,
     bucket: dict,
     as_of: datetime,
+    window_days: int = RANKING_WINDOW_DAYS,
 ) -> dict | None:
-    """Weekly ranking stats for one user; None when fewer than RANKING_MIN_RECORDS in window."""
+    """Ranking stats for one user; None when fewer than RANKING_MIN_RECORDS in window."""
     history = bucket.get("history") if isinstance(bucket.get("history"), list) else []
-    indices = history_indices_in_window(history, as_of, RANKING_WINDOW_DAYS)
+    indices = history_indices_in_window(history, as_of, window_days)
     scores: list[int] = []
     for i in indices:
         entry = history[i]
@@ -241,15 +245,12 @@ def ranking_user_stats(
     }
 
 
-def build_ranking_leaderboard(
+def _users_for_ranking_window(
     participants: list[dict],
     as_of: datetime,
-    viewer_email: str | None = None,
-) -> dict:
-    """Sort eligible users by 7-day Sleep Point sum; build nations from weekly averages."""
+    window_days: int,
+) -> list[dict]:
     users: list[dict] = []
-    viewer_email_norm = str(viewer_email or "").strip().lower()
-
     for row in participants:
         email = str(row.get("email") or "").strip().lower()
         if not email:
@@ -261,7 +262,7 @@ def build_ranking_leaderboard(
             except (TypeError, ValueError):
                 age = None
         bucket = row.get("bucket") if isinstance(row.get("bucket"), dict) else {}
-        stats = ranking_user_stats(age, bucket, as_of)
+        stats = ranking_user_stats(age, bucket, as_of, window_days=window_days)
         if stats is None:
             continue
         country_raw = str(row.get("country") or "").strip()
@@ -276,7 +277,6 @@ def build_ranking_leaderboard(
                 "recordCount": int(stats["record_count"]),
             }
         )
-
     users.sort(
         key=lambda u: (
             -u["weeklySleepPoint"],
@@ -284,7 +284,10 @@ def build_ranking_leaderboard(
             u["name"].lower(),
         )
     )
+    return users
 
+
+def _sleepers_from_users(users: list[dict], viewer_email_norm: str) -> list[dict]:
     sleepers: list[dict] = []
     for rank, u in enumerate(users, start=1):
         row: dict = {
@@ -296,9 +299,50 @@ def build_ranking_leaderboard(
         if viewer_email_norm and u["email"] == viewer_email_norm:
             row["email"] = u["email"]
         sleepers.append(row)
+    return sleepers
+
+
+def _viewer_from_users(
+    users: list[dict],
+    viewer_email_norm: str,
+    ineligible_message: str,
+) -> dict:
+    viewer: dict = {
+        "eligible": False,
+        "message": ineligible_message,
+        "rank": None,
+        "score": None,
+    }
+    if not viewer_email_norm:
+        return viewer
+    for i, u in enumerate(users):
+        if u["email"] != viewer_email_norm:
+            continue
+        return {
+            "eligible": True,
+            "message": "",
+            "rank": i + 1,
+            "score": u["weeklySleepPoint"],
+        }
+    return viewer
+
+
+def build_ranking_leaderboard(
+    participants: list[dict],
+    as_of: datetime,
+    viewer_email: str | None = None,
+) -> dict:
+    """Top Sleepers & nations: 28 days; Around Your Rank: 7 days."""
+    viewer_email_norm = str(viewer_email or "").strip().lower()
+
+    users_top = _users_for_ranking_window(participants, as_of, RANKING_WINDOW_DAYS)
+    users_around = _users_for_ranking_window(participants, as_of, AROUND_RANKING_WINDOW_DAYS)
+
+    sleepers = _sleepers_from_users(users_top, viewer_email_norm)
+    around_sleepers = _sleepers_from_users(users_around, viewer_email_norm)
 
     by_country: dict[str, list[int]] = {}
-    for u in users:
+    for u in users_top:
         country = u["country"]
         if not country:
             continue
@@ -318,28 +362,15 @@ def build_ranking_leaderboard(
     for rank, row in enumerate(nation_rows[:50], start=1):
         nations.append({"rank": rank, "country": row["country"]})
 
-    viewer: dict = {
-        "eligible": False,
-        "message": RANKING_INELIGIBLE_MESSAGE,
-        "rank": None,
-        "score": None,
-    }
-    if viewer_email_norm:
-        for i, u in enumerate(users):
-            if u["email"] != viewer_email_norm:
-                continue
-            viewer = {
-                "eligible": True,
-                "message": "",
-                "rank": i + 1,
-                "score": u["weeklySleepPoint"],
-            }
-            break
+    viewer = _viewer_from_users(users_around, viewer_email_norm, AROUND_RANKING_INELIGIBLE_MESSAGE)
+    viewer_top = _viewer_from_users(users_top, viewer_email_norm, RANKING_INELIGIBLE_MESSAGE)
 
     return {
         "sleepers": sleepers[:50],
+        "aroundSleepers": around_sleepers[:50],
         "nations": nations[:50],
         "viewer": viewer,
+        "viewerTop": viewer_top,
     }
 
 

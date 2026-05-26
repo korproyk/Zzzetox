@@ -2709,6 +2709,16 @@
         font-weight: 800;
       }
 
+      .sleep-score-line.sleep-score-growth-subline {
+        margin-top: 2px;
+        font-size: clamp(10px, 2.5vw, 12px);
+        font-weight: 400;
+        line-height: 1.45;
+        letter-spacing: -0.01em;
+        color: rgba(255, 255, 255, 0.48);
+        max-width: min(100%, 34em);
+      }
+
       .sleep-score-point-display[hidden] {
         display: none !important;
       }
@@ -3774,6 +3784,7 @@
                 <button type="button" class="rankings-section-link" id="rankingsTopMoreBtn">View full ranking ›</button>
               </div>
               <ol class="rankings-list" id="rankingsTopSleepersList" aria-label="Top sleepers"></ol>
+              <p class="rankings-around-empty" id="rankingsTopEmpty" hidden></p>
             </section>
             <section class="rankings-section" aria-labelledby="rankingsMemberNationsTitle">
               <div class="rankings-section-head">
@@ -3784,6 +3795,7 @@
                 <button type="button" class="rankings-section-link" id="rankingsNationsMoreBtn">View full ranking ›</button>
               </div>
               <ol class="rankings-nations-grid" id="rankingsNationsGrid" aria-label="Best sleep nations"></ol>
+              <p class="rankings-around-empty" id="rankingsNationsEmpty" hidden></p>
             </section>
           </div>
         </div>
@@ -3891,9 +3903,12 @@
       const GUEST_SESSION_EMAIL = "__guest__@zzzetox.local";
       const MAX_SCORABLE_SLEEP_HOURS = 16;
       const MIN_VALID_SLEEP_HOURS = 0.5;
-      const RANKING_WINDOW_DAYS = 7;
+      const SLEEP_POINT_WINDOW_DAYS = 7;
+      const AROUND_RANKING_WINDOW_DAYS = 7;
+      const RANKING_WINDOW_DAYS = 28;
       const RANKING_MIN_RECORDS = 3;
-      const RANKING_INELIGIBLE_MESSAGE = "Need at least 3 sleep records in the last 7 days.";
+      const RANKING_INELIGIBLE_MESSAGE = "Need at least 3 sleep records in the last 28 days.";
+      const AROUND_RANKING_INELIGIBLE_MESSAGE = "Need at least 3 sleep records in the last 7 days.";
       let lastMemberRankingsPayload = null;
 
       const GUEST_DUMMY_RANKINGS = {
@@ -3905,11 +3920,11 @@
           { rank: 5, country: "United Kingdom", flag: "🇬🇧" },
         ],
         sleepers: [
-          { rank: 1, name: "Luna", country: "South Korea", flag: "🇰🇷", score: 512 },
-          { rank: 2, name: "Noah", country: "Japan", flag: "🇯🇵", score: 498 },
-          { rank: 3, name: "Mia", country: "United States", flag: "🇺🇸", score: 487 },
-          { rank: 4, name: "Leo", country: "Canada", flag: "🇨🇦", score: 476 },
-          { rank: 5, name: "Ava", country: "United Kingdom", flag: "🇬🇧", score: 465 },
+          { rank: 1, name: "Luna", country: "South Korea", flag: "🇰🇷", score: 286 },
+          { rank: 2, name: "Noah", country: "Japan", flag: "🇯🇵", score: 254 },
+          { rank: 3, name: "Mia", country: "United States", flag: "🇺🇸", score: 231 },
+          { rank: 4, name: "Leo", country: "Canada", flag: "🇨🇦", score: 198 },
+          { rank: 5, name: "Ava", country: "United Kingdom", flag: "🇬🇧", score: 172 },
         ],
       };
 
@@ -4745,9 +4760,8 @@
         return { store, bucket };
       }
 
-      function sanitizeServerRankingsPayload(data) {
-        const nations = Array.isArray(data?.nations) ? data.nations : [];
-        const sleepers = (Array.isArray(data?.sleepers) ? data.sleepers : [])
+      function normalizeRankingSleeperRows(rows) {
+        return (Array.isArray(rows) ? rows : [])
           .filter((row) => !isGuestAccountEmail(row?.email))
           .map((row) => ({
             rank: Number(row.rank) || 0,
@@ -4757,21 +4771,32 @@
             email: row.email || "",
           }))
           .filter((row) => row.rank > 0);
-        const viewer =
-          data?.viewer && typeof data.viewer === "object"
-            ? {
-                eligible: Boolean(data.viewer.eligible),
-                message: String(data.viewer.message || RANKING_INELIGIBLE_MESSAGE),
-                rank: data.viewer.rank != null ? Number(data.viewer.rank) : null,
-                score: data.viewer.score != null ? Number(data.viewer.score) : null,
-              }
-            : {
-                eligible: false,
-                message: RANKING_INELIGIBLE_MESSAGE,
-                rank: null,
-                score: null,
-              };
-        return { nations, sleepers, viewer };
+      }
+
+      function normalizeRankingViewer(raw, fallbackMessage) {
+        if (raw && typeof raw === "object") {
+          return {
+            eligible: Boolean(raw.eligible),
+            message: String(raw.message || fallbackMessage),
+            rank: raw.rank != null ? Number(raw.rank) : null,
+            score: raw.score != null ? Number(raw.score) : null,
+          };
+        }
+        return {
+          eligible: false,
+          message: fallbackMessage,
+          rank: null,
+          score: null,
+        };
+      }
+
+      function sanitizeServerRankingsPayload(data) {
+        const nations = Array.isArray(data?.nations) ? data.nations : [];
+        const sleepers = normalizeRankingSleeperRows(data?.sleepers);
+        const aroundSleepers = normalizeRankingSleeperRows(data?.aroundSleepers);
+        const viewer = normalizeRankingViewer(data?.viewer, AROUND_RANKING_INELIGIBLE_MESSAGE);
+        const viewerTop = normalizeRankingViewer(data?.viewerTop, RANKING_INELIGIBLE_MESSAGE);
+        return { nations, sleepers, aroundSleepers, viewer, viewerTop };
       }
 
       function getCurrentSessionOrNull() {
@@ -6080,7 +6105,7 @@
       }
 
       /** Night indices with bedAt in (asOf - days, asOf] using device clock. */
-      function historyIndicesInWindow(history, asOf = new Date(), days = RANKING_WINDOW_DAYS) {
+      function historyIndicesInWindow(history, asOf = new Date(), days = SLEEP_POINT_WINDOW_DAYS) {
         const list = Array.isArray(history) ? history : [];
         const endTs = asOf.getTime();
         const startTs = endTs - days * 24 * 60 * 60 * 1000;
@@ -6212,7 +6237,7 @@
       /** Average Sleep Point for scorable nights in the last 7 days (device clock). */
       function computeWeeklyAverageSleepPoint(age, history, asOf = new Date()) {
         const list = Array.isArray(history) ? history : [];
-        const indices = historyIndicesInWindow(list, asOf);
+        const indices = historyIndicesInWindow(list, asOf, SLEEP_POINT_WINDOW_DAYS);
         let total = 0;
         let count = 0;
         for (const i of indices) {
@@ -6239,7 +6264,7 @@
 
       function sumHoursLast7Nights(history, asOf = new Date()) {
         const list = Array.isArray(history) ? history : [];
-        const indices = historyIndicesInWindow(list, asOf);
+        const indices = historyIndicesInWindow(list, asOf, SLEEP_POINT_WINDOW_DAYS);
         let sum = 0;
         for (const i of indices) {
           const entry = list[i];
@@ -6450,6 +6475,11 @@
           growthVal.textContent = memberLayout ? `${totalGrowth}Point` : String(totalGrowth);
           growthLine.appendChild(growthVal);
           block.appendChild(growthLine);
+          const growthSub = document.createElement("p");
+          growthSub.className = "sleep-score-line sleep-score-growth-subline";
+          growthSub.textContent =
+            "Total Growth Points are cumulative, while Top Sleepers rankings reflect the last 28 days.";
+          block.appendChild(growthSub);
         }
 
         const ageNote = sleepScoreAgeBaselineNote(age);
@@ -6591,7 +6621,9 @@
             return {
               nations: cleaned.nations,
               sleepers: cleaned.sleepers,
+              aroundSleepers: cleaned.aroundSleepers,
               viewer: cleaned.viewer,
+              viewerTop: cleaned.viewerTop,
             };
           }
         } catch {
@@ -6600,7 +6632,14 @@
         return {
           nations: [],
           sleepers: [],
+          aroundSleepers: [],
           viewer: {
+            eligible: false,
+            message: AROUND_RANKING_INELIGIBLE_MESSAGE,
+            rank: null,
+            score: null,
+          },
+          viewerTop: {
             eligible: false,
             message: RANKING_INELIGIBLE_MESSAGE,
             rank: null,
@@ -6770,17 +6809,20 @@
       function renderMemberRankingsPage({
         nations,
         sleepers,
+        aroundSleepers,
         viewer,
+        viewerTop,
         myEmail,
         myName,
         myCountryRaw,
       }) {
-        const eligible = Boolean(viewer?.eligible);
-        const myIndex = eligible
-          ? findMySleeperIndex(sleepers, { email: myEmail }, { emailOnly: true })
+        const aroundEligible = Boolean(viewer?.eligible);
+        const topEligible = Boolean(viewerTop?.eligible);
+        const aroundIndex = aroundEligible
+          ? findMySleeperIndex(aroundSleepers, { email: myEmail }, { emailOnly: true })
           : -1;
-        const myRank = eligible && viewer?.rank != null ? viewer.rank : null;
-        const myScore = eligible && viewer?.score != null ? viewer.score : null;
+        const myRank = aroundEligible && viewer?.rank != null ? viewer.rank : null;
+        const myScore = aroundEligible && viewer?.score != null ? viewer.score : null;
         const { alpha2: myAlpha2 } = resolveCountryForFlag(myCountryRaw);
 
         const rankEl = $("rankingsMyRankValue");
@@ -6797,14 +6839,14 @@
         const aroundMoreBtn = $("rankingsAroundMoreBtn");
         if (aroundMoreBtn) aroundMoreBtn.hidden = true;
 
-        if (eligible && myIndex >= 0) {
+        if (aroundEligible && aroundIndex >= 0) {
           if (aroundEmpty) aroundEmpty.hidden = true;
           if (aroundList) aroundList.hidden = false;
           const aroundRows = [];
-          if (myIndex > 0) aroundRows.push({ ...sleepers[myIndex - 1], isYou: false });
-          aroundRows.push({ ...sleepers[myIndex], isYou: true });
-          if (myIndex < sleepers.length - 1) {
-            aroundRows.push({ ...sleepers[myIndex + 1], isYou: false });
+          if (aroundIndex > 0) aroundRows.push({ ...aroundSleepers[aroundIndex - 1], isYou: false });
+          aroundRows.push({ ...aroundSleepers[aroundIndex], isYou: true });
+          if (aroundIndex < aroundSleepers.length - 1) {
+            aroundRows.push({ ...aroundSleepers[aroundIndex + 1], isYou: false });
           }
           renderRankingsPanelList(aroundList, aroundRows, (row) => {
             const { alpha2 } = resolveCountryForFlag(row.country);
@@ -6825,52 +6867,68 @@
           }
           if (aroundEmpty) {
             aroundEmpty.hidden = false;
-            aroundEmpty.textContent = viewer?.message || RANKING_INELIGIBLE_MESSAGE;
+            aroundEmpty.textContent = viewer?.message || AROUND_RANKING_INELIGIBLE_MESSAGE;
           }
         }
 
+        const topList = $("rankingsTopSleepersList");
+        const topEmpty = $("rankingsTopEmpty");
         const topMoreBtn = $("rankingsTopMoreBtn");
         const topLimit = rankingsMemberExpand.top ? sleepers.length : 10;
         if (topMoreBtn) {
           topMoreBtn.hidden = sleepers.length <= 10;
           topMoreBtn.textContent = rankingsMemberExpand.top ? "View less ›" : "View full ranking ›";
         }
-        renderRankingsPanelList(
-          $("rankingsTopSleepersList"),
-          sleepers.slice(0, topLimit),
-          (row) => {
-            const { alpha2 } = resolveCountryForFlag(row.country);
-            const highlight = Boolean(
-              myEmail && row.email && normalizeEmail(row.email) === normalizeEmail(myEmail)
-            );
-            return renderRankingsSleeperRow({
-              rank: row.rank,
-              flag: alpha2ToFlagEmoji(alpha2),
-              label: row.name || "—",
-              points: row.score,
-              highlight,
-            });
-          },
-          eligible ? "No ranked sleepers yet." : RANKING_INELIGIBLE_MESSAGE
-        );
+        if (topEligible) {
+          if (topEmpty) topEmpty.hidden = true;
+          if (topList) topList.hidden = false;
+          renderRankingsPanelList(
+            topList,
+            sleepers.slice(0, topLimit),
+            (row) => {
+              const { alpha2 } = resolveCountryForFlag(row.country);
+              const highlight = Boolean(
+                myEmail && row.email && normalizeEmail(row.email) === normalizeEmail(myEmail)
+              );
+              return renderRankingsSleeperRow({
+                rank: row.rank,
+                flag: alpha2ToFlagEmoji(alpha2),
+                label: row.name || "—",
+                points: row.score,
+                highlight,
+              });
+            },
+            "No ranked sleepers yet."
+          );
+        } else {
+          if (topList) {
+            topList.hidden = true;
+            topList.replaceChildren();
+          }
+          if (topEmpty) {
+            topEmpty.hidden = false;
+            topEmpty.textContent = viewerTop?.message || RANKING_INELIGIBLE_MESSAGE;
+          }
+        }
 
         const nationsMoreBtn = $("rankingsNationsMoreBtn");
         const nationsLimit = rankingsMemberExpand.nations ? nations.length : 10;
+        const nationsEmpty = $("rankingsNationsEmpty");
+        const nationsGrid = $("rankingsNationsGrid");
         if (nationsMoreBtn) {
           nationsMoreBtn.hidden = nations.length <= 10;
           nationsMoreBtn.textContent = rankingsMemberExpand.nations ? "View less ›" : "View full ranking ›";
         }
-        const nationsGrid = $("rankingsNationsGrid");
         if (nationsGrid) {
           nationsGrid.replaceChildren();
           const nationRows = nations.slice(0, nationsLimit);
           if (!nationRows.length) {
-            const empty = document.createElement("li");
-            empty.className = "rankings-empty-row";
-            empty.style.gridColumn = "1 / -1";
-            empty.textContent = "No nations ranked yet.";
-            nationsGrid.appendChild(empty);
+            if (nationsEmpty) {
+              nationsEmpty.hidden = false;
+              nationsEmpty.textContent = RANKING_INELIGIBLE_MESSAGE;
+            }
           } else {
+            if (nationsEmpty) nationsEmpty.hidden = true;
             for (const row of nationRows) {
               const { alpha2, displayName } = resolveCountryForFlag(row.country);
               nationsGrid.appendChild(
@@ -6917,7 +6975,7 @@
         guestLayout.hidden = true;
         memberLayout.hidden = true;
 
-        let { nations, sleepers, viewer, error } = await fetchGlobalRankings();
+        let { nations, sleepers, aroundSleepers, viewer, viewerTop, error } = await fetchGlobalRankings();
         if (error) {
           toast("danger", "Could not load rankings from the server. Check your connection and try again.");
         }
@@ -6931,7 +6989,9 @@
           renderMemberRankingsPage({
             nations,
             sleepers,
+            aroundSleepers: aroundSleepers || [],
             viewer,
+            viewerTop,
             myEmail,
             myName,
             myCountryRaw,
