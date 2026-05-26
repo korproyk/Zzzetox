@@ -2058,6 +2058,38 @@
         color: rgba(255, 255, 255, 0.55);
       }
 
+      .rankings-preview-note {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        margin: 2px 10px 8px;
+        text-align: center;
+      }
+
+      .rankings-preview-note[hidden] {
+        display: none !important;
+      }
+
+      .rankings-preview-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 650;
+        letter-spacing: 0.04em;
+        color: rgba(226, 232, 240, 0.88);
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+      }
+
+      .rankings-preview-copy {
+        font-size: 12px;
+        line-height: 1.4;
+        color: rgba(255, 255, 255, 0.5);
+        max-width: 28em;
+      }
+
       .rankings-info-icon {
         flex-shrink: 0;
         width: 16px;
@@ -3768,6 +3800,10 @@
               <span class="rankings-info-icon" aria-hidden="true">i</span>
               <span>Rankings are based on participant sleep data in the challenge.</span>
             </p>
+            <p class="rankings-preview-note" id="rankingsPreviewNote" hidden>
+              <span class="rankings-preview-badge">Preview Ranking</span>
+              <span class="rankings-preview-copy">Sample leaderboard until enough participants qualify.</span>
+            </p>
             <section class="rankings-section" aria-labelledby="rankingsAroundTitle">
               <div class="rankings-section-head">
                 <div class="rankings-section-head-left">
@@ -3931,6 +3967,40 @@
           { rank: 3, name: "Mia", country: "United States", flag: "🇺🇸", score: 231 },
           { rank: 4, name: "Leo", country: "Canada", flag: "🇨🇦", score: 198 },
           { rank: 5, name: "Ava", country: "United Kingdom", flag: "🇬🇧", score: 172 },
+        ],
+      };
+
+      /** Logged-in preview board when fewer than MEMBER_PREVIEW_MIN_REAL_SLEEPERS on the server (not stored in DB). */
+      const MEMBER_PREVIEW_MIN_REAL_SLEEPERS = 3;
+      const MEMBER_PREVIEW_YOUR_RANK = 5;
+
+      const MEMBER_PREVIEW_RANKINGS = {
+        nations: [
+          { rank: 1, country: "South Korea" },
+          { rank: 2, country: "Japan" },
+          { rank: 3, country: "United States" },
+          { rank: 4, country: "Canada" },
+          { rank: 5, country: "United Kingdom" },
+        ],
+        topSleepers: [
+          { rank: 1, name: "Luna", country: "South Korea", score: 286 },
+          { rank: 2, name: "Noah", country: "Japan", score: 254 },
+          { rank: 3, name: "Mia", country: "United States", score: 231 },
+          { rank: 4, name: "Leo", country: "Canada", score: 218 },
+          { rank: 5, name: "Preview You", country: "South Korea", score: 241 },
+          { rank: 6, name: "Ava", country: "United Kingdom", score: 198 },
+          { rank: 7, name: "Ethan", country: "Germany", score: 187 },
+          { rank: 8, name: "Sora", country: "Singapore", score: 176 },
+        ],
+        aroundSleepers: [
+          { rank: 1, name: "Kai", country: "Japan", score: 272 },
+          { rank: 2, name: "Luna", country: "South Korea", score: 264 },
+          { rank: 3, name: "Noah", country: "Japan", score: 251 },
+          { rank: 4, name: "Mia", country: "United States", score: 238 },
+          { rank: 5, name: "Preview You", country: "South Korea", score: 198 },
+          { rank: 6, name: "Leo", country: "Canada", score: 191 },
+          { rank: 7, name: "Ava", country: "United Kingdom", score: 184 },
+          { rank: 8, name: "Ethan", country: "Germany", score: 179 },
         ],
       };
 
@@ -6606,6 +6676,77 @@
         };
       }
 
+      function hasEnoughRealMemberRankings(payload) {
+        return (
+          Array.isArray(payload?.sleepers) &&
+          payload.sleepers.length >= MEMBER_PREVIEW_MIN_REAL_SLEEPERS
+        );
+      }
+
+      function buildMemberPreviewRankings(session) {
+        const myEmail = normalizeEmail(session?.email || "");
+        const myName = String(session?.name || "").trim() || "You";
+        const myCountry =
+          String(session?.country || loadUsers()[session?.email]?.country || "").trim() ||
+          "South Korea";
+
+        const cloneRow = (row) => ({
+          rank: row.rank,
+          name: row.name,
+          country: row.country,
+          score: row.score,
+          email: row.email || "",
+        });
+
+        const sleepers = MEMBER_PREVIEW_RANKINGS.topSleepers.map(cloneRow);
+        const aroundSleepers = MEMBER_PREVIEW_RANKINGS.aroundSleepers.map(cloneRow);
+        const nations = MEMBER_PREVIEW_RANKINGS.nations.map((row) => ({ ...row }));
+
+        for (const list of [sleepers, aroundSleepers]) {
+          const row = list.find((r) => r.rank === MEMBER_PREVIEW_YOUR_RANK);
+          if (!row) continue;
+          row.name = myName;
+          row.country = myCountry;
+          if (myEmail) row.email = myEmail;
+        }
+
+        const youTop = sleepers.find((r) => r.rank === MEMBER_PREVIEW_YOUR_RANK);
+        const youAround = aroundSleepers.find((r) => r.rank === MEMBER_PREVIEW_YOUR_RANK);
+
+        return {
+          nations,
+          sleepers,
+          aroundSleepers,
+          viewer: {
+            eligible: true,
+            message: "",
+            rank: MEMBER_PREVIEW_YOUR_RANK,
+            score: youAround?.score ?? 198,
+          },
+          viewerTop: {
+            eligible: true,
+            message: "",
+            rank: MEMBER_PREVIEW_YOUR_RANK,
+            score: youTop?.score ?? 241,
+          },
+          fromPreview: true,
+        };
+      }
+
+      function applyMemberRankingsPreviewIfNeeded(cleaned, session) {
+        if (hasEnoughRealMemberRankings(cleaned)) {
+          return {
+            nations: cleaned.nations,
+            sleepers: cleaned.sleepers,
+            aroundSleepers: cleaned.aroundSleepers,
+            viewer: cleaned.viewer,
+            viewerTop: cleaned.viewerTop,
+            fromPreview: false,
+          };
+        }
+        return buildMemberPreviewRankings(session);
+      }
+
       async function fetchGlobalRankings() {
         const session = getCurrentSessionOrNull();
         if (isGuestSession(session)) {
@@ -6618,24 +6759,7 @@
           headers.Authorization = `Bearer ${session.authToken}`;
         }
         const asOf = encodeURIComponent(new Date().toISOString());
-        try {
-          const res = await fetch(`/api/rankings?asOf=${asOf}`, { headers, cache: "no-store" });
-          const data = await res.json().catch(() => ({}));
-          if (res.ok && data && data.ok) {
-            const cleaned = sanitizeServerRankingsPayload(data);
-            lastMemberRankingsPayload = cleaned;
-            return {
-              nations: cleaned.nations,
-              sleepers: cleaned.sleepers,
-              aroundSleepers: cleaned.aroundSleepers,
-              viewer: cleaned.viewer,
-              viewerTop: cleaned.viewerTop,
-            };
-          }
-        } catch {
-          /* server unavailable */
-        }
-        return {
+        const emptyReal = {
           nations: [],
           sleepers: [],
           aroundSleepers: [],
@@ -6651,7 +6775,24 @@
             rank: null,
             score: null,
           },
-          error: true,
+        };
+        try {
+          const res = await fetch(`/api/rankings?asOf=${asOf}`, { headers, cache: "no-store" });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data && data.ok) {
+            const cleaned = sanitizeServerRankingsPayload(data);
+            const payload = applyMemberRankingsPreviewIfNeeded(cleaned, session);
+            lastMemberRankingsPayload = payload;
+            return { ...payload, error: false };
+          }
+        } catch {
+          /* server unavailable — fall through to preview */
+        }
+        const payload = applyMemberRankingsPreviewIfNeeded(emptyReal, session);
+        lastMemberRankingsPayload = payload;
+        return {
+          ...payload,
+          error: payload.fromPreview ? false : true,
         };
       }
 
@@ -6821,7 +6962,13 @@
         myEmail,
         myName,
         myCountryRaw,
+        isPreview = false,
       }) {
+        const previewNote = $("rankingsPreviewNote");
+        const memberInfo = $("rankingsMemberInfoNote");
+        if (previewNote) previewNote.hidden = !isPreview;
+        if (memberInfo) memberInfo.hidden = isPreview;
+
         const aroundEligible = Boolean(viewer?.eligible);
         const topEligible = Boolean(viewerTop?.eligible);
         const aroundIndex = aroundEligible
@@ -6981,7 +7128,8 @@
         guestLayout.hidden = true;
         memberLayout.hidden = true;
 
-        let { nations, sleepers, aroundSleepers, viewer, viewerTop, error } = await fetchGlobalRankings();
+        let { nations, sleepers, aroundSleepers, viewer, viewerTop, fromPreview, error } =
+          await fetchGlobalRankings();
         if (error) {
           toast("danger", "Could not load rankings from the server. Check your connection and try again.");
         }
@@ -7001,6 +7149,7 @@
             myEmail,
             myName,
             myCountryRaw,
+            isPreview: Boolean(fromPreview),
           });
         }
       }
