@@ -2088,11 +2088,32 @@
         border: 1px solid rgba(255, 255, 255, 0.14);
       }
 
+      .rankings-preview-copy-group {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        max-width: 28em;
+      }
+
       .rankings-preview-copy {
         font-size: 12px;
+        font-weight: 400;
         line-height: 1.4;
         color: rgba(255, 255, 255, 0.5);
         max-width: 28em;
+      }
+
+      @media (max-width: 520px) {
+        .rankings-preview-copy-group {
+          max-width: 100%;
+        }
+
+        .rankings-preview-copy {
+          font-size: clamp(9px, 2.35vw, 12px);
+          white-space: nowrap;
+          max-width: 100%;
+        }
       }
 
       .rankings-info-icon {
@@ -2396,6 +2417,23 @@
         color: #c4b5fd;
       }
 
+      .rankings-section-footnote {
+        margin: 4px 6px 2px;
+        padding: 0 2px 4px;
+        text-align: center;
+        font-size: 11px;
+        font-weight: 400;
+        line-height: 1.35;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      @media (max-width: 520px) {
+        .rankings-section-footnote {
+          font-size: clamp(9px, 2.45vw, 11px);
+          white-space: nowrap;
+        }
+      }
+
       .rankings-row--you {
         background: rgba(139, 92, 246, 0.24);
         border-radius: 10px;
@@ -2440,12 +2478,23 @@
         padding: 6px 2px;
       }
 
-      .rankings-nation-name {
-        font-size: clamp(10px, 1.8vw, 12px);
+      #rankingsNationsGrid .rankings-nation-name {
+        width: 100%;
+        max-width: 100%;
+        font-size: clamp(9px, 1.75vw, 12px);
         font-weight: 650;
         color: rgba(255, 255, 255, 0.88);
-        line-height: 1.25;
-        word-break: break-word;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        word-break: normal;
+        overflow-wrap: normal;
+        hyphens: none;
+      }
+
+      #rankingsNationsGrid .rankings-nation-cell {
+        overflow: hidden;
       }
 
       .rankings-around-empty {
@@ -2479,8 +2528,9 @@
           gap: 10px 6px;
         }
 
-        .rankings-nation-name {
-          font-size: clamp(9px, 2.4vw, 11px);
+        #rankingsNationsGrid .rankings-nation-name {
+          font-size: clamp(7px, 1.9vw, 10px);
+          letter-spacing: -0.01em;
         }
       }
 
@@ -3816,7 +3866,10 @@
             </p>
             <p class="rankings-preview-note" id="rankingsPreviewNote" hidden>
               <span class="rankings-preview-badge">Preview Ranking</span>
-              <span class="rankings-preview-copy">Sample leaderboard until enough participants qualify.</span>
+              <span class="rankings-preview-copy-group">
+                <span class="rankings-preview-copy">Preview leaderboard until more users join.</span>
+                <span class="rankings-preview-copy">Users with more sleep records are prioritized in case of tied scores.</span>
+              </span>
             </p>
             <section class="rankings-section" aria-labelledby="rankingsAroundTitle">
               <div class="rankings-section-head">
@@ -3828,6 +3881,7 @@
               </div>
               <ol class="rankings-list" id="rankingsAroundList" aria-label="Sleepers around your rank"></ol>
               <p class="rankings-around-empty" id="rankingsAroundEmpty" hidden>Record sleep to appear on the ranking board.</p>
+              <p class="rankings-section-footnote">Based on sleep records from the last 7 days.</p>
             </section>
             <section class="rankings-section" aria-labelledby="rankingsTopSleepersTitle">
               <div class="rankings-section-head">
@@ -3839,6 +3893,7 @@
               </div>
               <ol class="rankings-list" id="rankingsTopSleepersList" aria-label="Top sleepers"></ol>
               <p class="rankings-around-empty" id="rankingsTopEmpty" hidden></p>
+              <p class="rankings-section-footnote">Based on sleep records from the last 28 days.</p>
             </section>
             <section class="rankings-section" aria-labelledby="rankingsMemberNationsTitle">
               <div class="rankings-section-head">
@@ -3850,6 +3905,7 @@
               </div>
               <ol class="rankings-nations-grid" id="rankingsNationsGrid" aria-label="Best sleep nations"></ol>
               <p class="rankings-around-empty" id="rankingsNationsEmpty" hidden></p>
+              <p class="rankings-section-footnote">Based on sleep records from the last 28 days.</p>
             </section>
           </div>
         </div>
@@ -7078,6 +7134,7 @@
         const nameEl = document.createElement("span");
         nameEl.className = "rankings-nation-name";
         nameEl.textContent = label;
+        if (label && label !== "—") nameEl.title = label;
 
         li.append(badge, flagEl, nameEl);
         return li;
@@ -7308,7 +7365,7 @@
               } else {
                 const { alpha2, displayName } = resolveCountryForFlag(row.country);
                 flag = alpha2ToFlagEmoji(alpha2) || "🏳️";
-                label = displayName || row.country || "—";
+                label = row.country || displayName || "—";
               }
               nationsGrid.appendChild(
                 renderRankingsNationCell({
