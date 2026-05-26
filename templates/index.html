@@ -2636,10 +2636,44 @@
 
       .sleep-score-point-display {
         display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(6px, 1.5vw, 10px);
+      }
+
+      .sleep-score-point-row {
+        display: flex;
         align-items: baseline;
         justify-content: center;
         gap: clamp(8px, 2vw, 14px);
         flex-wrap: wrap;
+      }
+
+      .sleep-score-period-badge {
+        display: inline-block;
+        padding: 5px 14px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 750;
+        letter-spacing: 0.06em;
+        line-height: 1.2;
+        color: #ede9fe;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.42), rgba(124, 58, 237, 0.28));
+        border: 1px solid rgba(167, 139, 250, 0.55);
+        box-shadow: 0 0 14px rgba(139, 92, 246, 0.22);
+      }
+
+      .sleep-score-period-badge[hidden] {
+        display: none !important;
+      }
+
+      .sleep-score-level-subline {
+        font-size: clamp(12px, 2.2vw, 14px);
+        font-weight: 600;
+        line-height: 1.45;
+        color: rgba(196, 181, 253, 0.82);
+        max-width: 28ch;
       }
 
       .sleep-score-point-display[hidden] {
@@ -3533,8 +3567,11 @@
               loading="eager"
             />
             <div class="sleep-score-point-display" id="sleepScorePointDisplay">
-            <p class="sleep-score-value" id="sleepScoreValue">—</p>
-              <span class="sleep-score-points-label">Points</span>
+              <div class="sleep-score-point-row">
+                <p class="sleep-score-value" id="sleepScoreValue">—</p>
+                <span class="sleep-score-points-label">Points</span>
+              </div>
+              <span class="sleep-score-period-badge" id="sleepScorePeriodBadge" hidden>This Week</span>
             </div>
             <p class="sleep-score-level" id="sleepScoreLevel">Lv.—</p>
             <div class="sleep-score-detail" id="sleepScoreDetail"></div>
@@ -5043,9 +5080,15 @@
         return getUserAgeForGoal(session);
       }
 
+      function setSleepScorePeriodBadgeVisible(show) {
+        const badge = $("sleepScorePeriodBadge");
+        if (badge) badge.hidden = !show;
+      }
+
       function applySleepScorePageUi(session) {
         const guestNote = $("sleepScoreGuestNote");
         if (guestNote) guestNote.hidden = !session || !isGuestSession(session);
+        setSleepScorePeriodBadgeVisible(Boolean(session && session.email && !isGuestSession(session)));
       }
 
       function getSleepGoalOptionsForAge(age) {
@@ -6274,7 +6317,14 @@
         return "";
       }
 
-      function renderSleepScoreDetailStructured({ hoursSlept, score, level, age, totalGrowth }) {
+      function renderSleepScoreDetailStructured({
+        hoursSlept,
+        score,
+        level,
+        age,
+        totalGrowth,
+        memberLevelSubline = false,
+      }) {
         const detEl = $("sleepScoreDetail");
         const hero = $("sleepScoreHero");
         if (!detEl) return;
@@ -6300,6 +6350,13 @@
         levelLine.className = "sleep-score-line sleep-score-metric-line";
         levelLine.append("Your ", createSleepMetricTermButton("Sleep Level", "level"), `: ${level}`);
         block.appendChild(levelLine);
+
+        if (memberLevelSubline) {
+          const levelSub = document.createElement("p");
+          levelSub.className = "sleep-score-line sleep-score-level-subline";
+          levelSub.textContent = "Based on your sleep quality in the last 7 days.";
+          block.appendChild(levelSub);
+        }
 
         if (totalGrowth != null) {
           const growthLine = document.createElement("p");
@@ -6406,6 +6463,7 @@
           level: weeklyLevel,
           age,
           totalGrowth,
+          memberLevelSubline: true,
         });
         if (hero) hero.classList.add("sleep-score-hero--structured");
       }
@@ -6797,6 +6855,7 @@
         const hero = $("sleepScoreHero");
         const showPlainDetail = (msg) => {
           hideSleepMetricTip();
+          setSleepScorePeriodBadgeVisible(false);
           if (hero) hero.classList.remove("sleep-score-hero--structured");
           if (pointDisplay) pointDisplay.hidden = true;
           if (valEl) {
