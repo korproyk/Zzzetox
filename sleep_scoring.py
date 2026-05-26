@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import math
+import statistics
 from datetime import datetime, timedelta, timezone
 
 _HOUR_EPS = 1.0 / 3600.0
 MIN_VALID_SLEEP_HOURS = 0.5  # 30 minutes; shorter sleeps are invalid for scoring
 MAX_SCORABLE_SLEEP_HOURS = 16.0
 SLEEP_POINT_WINDOW_DAYS = 7
+SLEEP_SCORE_DURATION_WEIGHT = 0.34
+SLEEP_SCORE_BEDTIME_WEIGHT = 0.33
+SLEEP_SCORE_CONSISTENCY_WEIGHT = 0.33
+CONSISTENCY_NEUTRAL_SCORE = 88  # friendly default when fewer than 2 scorable nights
 AROUND_RANKING_WINDOW_DAYS = 7
 RANKING_WINDOW_DAYS = 28
 RANKING_MIN_RECORDS = 3
@@ -152,13 +157,188 @@ def history_indices_in_window(
 
 
 def duration_hours_score(hours: float, lo: float, hi: float) -> int:
+    """Peak score inside [lo, hi]; clearer (but still gradual) penalty above hi."""
     if is_near_zero_sleep_hours(hours):
         return 0
     if hours < lo:
         return round(25 + (hours / lo) * 75)
-    if hours > hi:
-        return max(45, round(100 - min(50, (hours - hi) * 8)))
-    return 100
+    if hours <= hi:
+        return 100
+    excess = hours - hi
+    penalty = excess * 12 + max(0.0, excess - 1.0) * 4
+    return max(42, round(100 - min(58, penalty)))
+
+
+def _mean_abs_deviation(values: list[float]) -> float:
+    if len(values) < 2:
+        return 0.0
+    median = statistics.median(values)
+    return sum(abs(v - median) for v in values) / len(values)
+
+
+def _circular_mean_sleep_hours(hours: list[float]) -> float:
+    if not hours:
+        return 0.0
+    angles = [h / 24.0 * 2.0 * math.pi for h in hours]
+    sin_sum = sum(math.sin(a) for a in angles)
+    cos_sum = sum(math.cos(a) for a in angles)
+    if abs(sin_sum) < 1e-9 and abs(cos_sum) < 1e-9:
+        return hours[0]
+    angle = math.atan2(sin_sum, cos_sum)
+    if angle < 0:
+        angle += 2.0 * math.pi
+    return angle / (2.0 * math.pi) * 24.0
+
+
+def _circular_bedtime_mad(hours: list[float]) -> float:
+    if len(hours) < 2:
+        return 0.0
+    mean = _circular_mean_sleep_hours(hours)
+    devs: list[float] = []
+    for h in hours:
+        d = abs(h - mean)
+        if d > 12.0:
+            d = 24.0 - d
+        devs.append(d)
+    return sum(devs) / len(devs)
+
+
+def spread_to_consistency_score(
+    mad: float,
+    *,
+    tight: float,
+    moderate: float,
+    wide: float,
+) -> int:
+    """Map mean absolute deviation (hours) to a supportive 42–100 score."""
+    if mad <= tight:
+        return 100
+    if mad <= moderate:
+        return round(100 - (mad - tight) / (moderate - tight) * 15)
+    if mad <= wide:
+        return round(85 - (mad - moderate) / (wide - moderate) * 30)
+    extra = min(mad - wide, 2.0)
+    return max(42, round(55 - extra * 15))
+
+
+def schedule_consistency_band(score: int) -> str:
+    if score >= 88:
+        return "steady"
+    if score >= 72:
+        return "moderate"
+    return "variable"
+
+
+def schedule_consistency_label_en(band: str) -> str:
+    return {
+        "steady": "fairly steady bedtime and duration pattern",
+        "moderate": "somewhat mixed sleep timing or duration",
+        "variable": "quite variable sleep timing or duration",
+        "unknown": "not enough nights to judge consistency yet",
+    }.get(band, "not enough nights to judge consistency yet")
+
+
+def _scorable_window_entries(history: list, index: int, window_nights: int = 7) -> tuple[list[float], list[float]]:
+    start = max(0, index - window_nights + 1)
+    bed_hours: list[float] = []
+    dur_hours: list[float] = []
+    for i in range(start, index + 1):
+        if i < 0 or i >= len(history):
+            continue
+        entry = history[i]
+        if not isinstance(entry, dict) or not entry.get("bedAt"):
+            continue
+        bh = bed_at_to_sleep_hours(str(entry["bedAt"]))
+        if bh is None:
+            continue
+        hs = effective_sleep_hours_from_ms(entry.get("durationMs"))
+        if not is_valid_sleep_hours(hs):
+            continue
+        bed_hours.append(bh)
+        dur_hours.append(hs)
+    return bed_hours, dur_hours
+
+
+def schedule_consistency_score_for_history(
+    history: list,
+    index: int | None = None,
+    window_nights: int = 7,
+) -> int:
+    """0–100 score for bedtime + duration stability in recent nights."""
+    if not isinstance(history, list) or not history:
+        return CONSISTENCY_NEUTRAL_SCORE
+    if index is None:
+        index = len(history) - 1
+    bed_hours, dur_hours = _scorable_window_entries(history, index, window_nights)
+    if len(bed_hours) < 2:
+        return CONSISTENCY_NEUTRAL_SCORE
+    bed_mad = _circular_bedtime_mad(bed_hours)
+    dur_mad = _mean_abs_deviation(dur_hours)
+    bed_score = spread_to_consistency_score(bed_mad, tight=0.35, moderate=0.85, wide=1.75)
+    dur_score = spread_to_consistency_score(dur_mad, tight=0.45, moderate=1.0, wide=2.0)
+    return round((bed_score + dur_score) / 2)
+
+
+def schedule_consistency_details(
+    history: list,
+    index: int | None = None,
+    window_nights: int = 7,
+) -> dict:
+    if not isinstance(history, list) or not history:
+        return {
+            "score": None,
+            "band": "unknown",
+            "nights_used": 0,
+            "bedtime_mad_h": None,
+            "duration_mad_h": None,
+        }
+    if index is None:
+        index = len(history) - 1
+    bed_hours, dur_hours = _scorable_window_entries(history, index, window_nights)
+    nights_used = len(bed_hours)
+    if nights_used < 2:
+        return {
+            "score": CONSISTENCY_NEUTRAL_SCORE,
+            "band": "unknown",
+            "nights_used": nights_used,
+            "bedtime_mad_h": None,
+            "duration_mad_h": None,
+        }
+    bed_mad = _circular_bedtime_mad(bed_hours)
+    dur_mad = _mean_abs_deviation(dur_hours)
+    score = schedule_consistency_score_for_history(history, index, window_nights)
+    return {
+        "score": score,
+        "band": schedule_consistency_band(score),
+        "nights_used": nights_used,
+        "bedtime_mad_h": round(bed_mad, 2),
+        "duration_mad_h": round(dur_mad, 2),
+    }
+
+
+def composite_sleep_point(
+    duration_score: int,
+    bedtime_score: int,
+    consistency_score: int,
+    hours_slept: float | None = None,
+    dur_hi: float | None = None,
+) -> int:
+    composite = (
+        duration_score * SLEEP_SCORE_DURATION_WEIGHT
+        + bedtime_score * SLEEP_SCORE_BEDTIME_WEIGHT
+        + consistency_score * SLEEP_SCORE_CONSISTENCY_WEIGHT
+    )
+    if (
+        hours_slept is not None
+        and dur_hi is not None
+        and math.isfinite(hours_slept)
+        and math.isfinite(dur_hi)
+        and hours_slept > dur_hi
+    ):
+        excess = hours_slept - dur_hi
+        dampen = max(0.75, 1.0 - excess * 0.07)
+        composite *= dampen
+    return clamp_sleep_point(composite)
 
 
 def _score_history_entry(age: int | None, history: list, index: int) -> int | None:
@@ -179,7 +359,10 @@ def _score_history_entry(age: int | None, history: list, index: int) -> int | No
     diff_h = abs(actual_h - rec_h)
     bedtime_score = sleep_score_from_bedtime_diff_hours(diff_h)
     duration_score = duration_hours_score(hours_slept, dur_lo, dur_hi)
-    return clamp_sleep_point((bedtime_score + duration_score) / 2)
+    consistency_score = schedule_consistency_score_for_history(history, index)
+    return composite_sleep_point(
+        duration_score, bedtime_score, consistency_score, hours_slept, dur_hi
+    )
 
 
 def compute_latest_sleep_score(age: int | None, bucket: dict) -> int | None:

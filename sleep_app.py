@@ -58,6 +58,8 @@ from sleep_scoring import (
     build_ranking_leaderboard,
     merge_sleep_buckets,
     parse_as_of_datetime,
+    schedule_consistency_details,
+    schedule_consistency_label_en,
 )
 
 logger = logging.getLogger(__name__)
@@ -533,7 +535,7 @@ def _classification_label_en(kind: str) -> str:
         "severe_shortage": "severe insufficiency (0 h showing — no real sleep counted)",
         "insufficient": "below the age-based recommended range (insufficient)",
         "adequate": "within the age-based recommended range (adequate)",
-        "excessive": "above the age-based recommended range (possibly excessive)",
+        "excessive": "above the age-based recommended range (longer than the balanced band — not automatically better)",
     }[kind]
 
 
@@ -602,6 +604,7 @@ def _merged_sleep_status_paragraph(
     *,
     both_logged_zeros: bool,
     multiple_zero_nights: bool,
+    consistency_band: str = "unknown",
 ) -> str:
     """Section 2: current status; merges latest vs average when classification matches."""
     band = f"{rec_lo:.0f}–{rec_hi:.0f} hours"
@@ -637,18 +640,27 @@ def _merged_sleep_status_paragraph(
                 skip_because_both_logged_zeros=False,
             )
         if latest_cls == "adequate":
+            steady_note = (
+                " Your recent bed and wake pattern looks fairly steady — that kind of balance is what strong sleep scores are built on."
+                if consistency_band == "steady"
+                else (
+                    " A steadier bedtime from night to night would help turn good hours into a sustainable groove."
+                    if consistency_band == "variable"
+                    else ""
+                )
+            )
             if abs(latest_h - avg_h) < 0.15:
                 return _append_multi_zero_data_notice(
                     (
                         f"2) Where things stand: Last night and your recent average are both ~{latest_h:.1f} h — "
-                        f"right in that {band} pocket for your age."
+                        f"right in that {band} pocket for your age.{steady_note}"
                     ),
                     multiple_zero_nights=multiple_zero_nights,
                     skip_because_both_logged_zeros=False,
                 )
             return _append_multi_zero_data_notice(
                 (
-                    f"2) Where things stand: Last night ~{latest_h:.1f} h, recent average ~{avg_h:.1f} h — both inside the {band} band. Nice and steady."
+                    f"2) Where things stand: Last night ~{latest_h:.1f} h, recent average ~{avg_h:.1f} h — both inside the {band} band.{steady_note}"
                 ),
                 multiple_zero_nights=multiple_zero_nights,
                 skip_because_both_logged_zeros=False,
@@ -663,7 +675,8 @@ def _merged_sleep_status_paragraph(
             )
         return _append_multi_zero_data_notice(
             (
-                f"2) Where things stand: Last night ~{latest_h:.1f} h, recent average ~{avg_h:.1f} h — both above the top of the {band} range."
+                f"2) Where things stand: Last night ~{latest_h:.1f} h, recent average ~{avg_h:.1f} h — both above the top of the {band} range. "
+                "More hours on the clock is not the same as balanced sleep; a steady rhythm inside the band is usually the healthier win."
             ),
             multiple_zero_nights=multiple_zero_nights,
             skip_because_both_logged_zeros=False,
@@ -687,6 +700,7 @@ def _meaning_and_gentle_risks(
     multiple_zero_nights: bool,
     rec_lo: float,
     rec_hi: float,
+    consistency_band: str = "unknown",
 ) -> str:
     """Section 3: educational meaning; personalized, not medical."""
     shortage = {"severe_shortage", "insufficient"}
@@ -711,10 +725,21 @@ def _meaning_and_gentle_risks(
         )
     if touched_excess:
         return (
-            "3) Why it matters: Long nights are often catch-up sleep. If days still feel foggy, nudge bedtime earlier a little at a time — tweak the rhythm, not the panic button."
+            "3) Why it matters: Extra-long nights are often catch-up sleep — they are not the same as a balanced routine inside your age band. "
+            "Steady timing and hours in the sweet spot usually beat stacking on more sleep. "
+            "If days still feel foggy, nudge bedtime earlier a little at a time — tweak the rhythm, not the panic button."
+        )
+    if consistency_band == "steady":
+        return (
+            f"3) Why it matters: Hanging inside that {rec_lo:.0f}–{rec_hi:.0f} h band with a fairly regular schedule is the kind of sustainable pattern this app treats as top-tier sleep — steady energy beats one heroic long night."
+        )
+    if consistency_band == "variable":
+        return (
+            f"3) Why it matters: Your hours are near the right neighborhood, but the timing jumps around — that can make mornings feel harder even when totals look okay. "
+            "Small shifts toward a regular bedtime often help as much as adding another hour."
         )
     return (
-        "3) Why it matters: Hanging near your age band usually keeps daytime energy steadier. Treat these numbers like a compass, not a report card."
+        "3) Why it matters: Hanging near your age band with a predictable rhythm usually keeps daytime energy steadier. Treat these numbers like a compass, not a report card."
     )
 
 
@@ -724,6 +749,7 @@ def _practical_suggestions(
     *,
     both_logged_zeros: bool,
     multiple_zero_nights: bool,
+    consistency_band: str = "unknown",
 ) -> list[str]:
     """Section 4: three concrete, non-medical habits."""
     if both_logged_zeros or multiple_zero_nights:
@@ -742,8 +768,14 @@ def _practical_suggestions(
     if latest_cls == "excessive" or avg_cls == "excessive":
         return [
             "Try a little morning light soon after you wake up — it helps your body clock feel clear about “day” time.",
-            "Keep naps short and earlier in the afternoon so they do not steal from your night sleep.",
-            "Notice whether very late bedtimes are a habit; shifting them earlier by 15 minutes at a time is often easier than jumping an hour.",
+            "Aim for a similar bedtime most nights, even on weekends — balance beats marathon sleep blocks.",
+            "Notice whether very late bedtimes are a habit; shifting them earlier by 15 minutes at a time is often easier than sleeping in much longer.",
+        ]
+    if consistency_band == "variable":
+        return [
+            "Pick a wake-up time you can keep most days, then walk bedtime backward until it feels realistic — consistency helps more than one extra-long night.",
+            "Dim the room and swap to calmer activities for 30–45 minutes before lights-out; let screens wait until morning.",
+            "Keep weekend wake times within about an hour of school days so Monday does not feel like jet lag.",
         ]
     return [
         "Keep weekend wake times within about an hour of school days so Monday does not feel like jet lag.",
@@ -790,6 +822,7 @@ def _sleep_feedback_context(payload: dict) -> dict:
     )
     zero_night_count = sum(1 for h in hours_list if h <= _HOUR_EPS)
     multiple_zero_nights = zero_night_count >= 2
+    consistency = schedule_consistency_details(history)
 
     return {
         "has_data": True,
@@ -806,6 +839,11 @@ def _sleep_feedback_context(payload: dict) -> dict:
         "both_logged_zeros": both_logged_zeros,
         "zero_night_count": zero_night_count,
         "multiple_zero_nights": multiple_zero_nights,
+        "consistency_band": consistency.get("band", "unknown"),
+        "consistency_score": consistency.get("score"),
+        "consistency_nights": consistency.get("nights_used", 0),
+        "bedtime_mad_h": consistency.get("bedtime_mad_h"),
+        "duration_mad_h": consistency.get("duration_mad_h"),
     }
 
 
@@ -834,6 +872,18 @@ def _assessment_block_for_prompt(ctx: dict) -> str:
         if multi
         else ""
     )
+    c_band = str(ctx.get("consistency_band") or "unknown")
+    c_score = ctx.get("consistency_score")
+    c_nights = int(ctx.get("consistency_nights") or 0)
+    c_label = schedule_consistency_label_en(c_band)
+    c_score_note = f"{c_score}/100" if c_score is not None else "n/a"
+    consistency_note = (
+        f"\nSchedule consistency (bedtime + duration stability over {c_nights} scorable night(s)): "
+        f"{c_label} [band: {c_band}, score: {c_score_note}]. "
+        "High app levels reward balanced hours inside the age band plus a steady rhythm — not simply sleeping longer. "
+        "When hours are above the band, say gently that longer sleep is not the same as healthy balance. "
+        "When hours are in-band and consistency is steady, you may affirm sustainable habits."
+    )
     return (
         f"Age: {age_note}.\n"
         f"Recommended nightly sleep for this age band: {ctx['rec_lo']:.0f}–{ctx['rec_hi']:.0f} hours.\n"
@@ -843,9 +893,11 @@ def _assessment_block_for_prompt(ctx: dict) -> str:
         f"both_logged_zeros={bool(both)}\n"
         f"{both_note}"
         f"{multi_note}"
+        f"{consistency_note}"
         "\nRules: If sleep is 0 h it MUST NOT be described as merely 'short sleep' or 'a little low'. "
         "Do not contradict the classification codes, but you may explain missed saves when both_logged_zeros is true. "
-        "When multiple_zero_nights is true, prioritize missed recording over a shortage narrative unless the user clearly has solid hour totals."
+        "When multiple_zero_nights is true, prioritize missed recording over a shortage narrative unless the user clearly has solid hour totals. "
+        "Do not praise very long sleep as 'optimal' or 'great' when classification is excessive — frame it as catch-up or imbalance unless the user clearly needed recovery."
     )
 
 
@@ -866,6 +918,7 @@ def _heuristic_feedback(payload: dict) -> str:
     latest_cls, avg_cls = ctx["latest_cls"], ctx["avg_cls"]
     both_logged_zeros = bool(ctx.get("both_logged_zeros"))
     multiple_zero_nights = bool(ctx.get("multiple_zero_nights"))
+    consistency_band = str(ctx.get("consistency_band") or "unknown")
 
     opening = f"Hi {name},\n\nHere is a quick read on how your nights look — coaching, not a clinic note.\n\n"
 
@@ -879,6 +932,7 @@ def _heuristic_feedback(payload: dict) -> str:
         rec_hi,
         both_logged_zeros=both_logged_zeros,
         multiple_zero_nights=multiple_zero_nights,
+        consistency_band=consistency_band,
     )
     s3 = _meaning_and_gentle_risks(
         latest_cls,
@@ -887,12 +941,14 @@ def _heuristic_feedback(payload: dict) -> str:
         multiple_zero_nights=multiple_zero_nights,
         rec_lo=rec_lo,
         rec_hi=rec_hi,
+        consistency_band=consistency_band,
     )
     tips = _practical_suggestions(
         latest_cls,
         avg_cls,
         both_logged_zeros=both_logged_zeros,
         multiple_zero_nights=multiple_zero_nights,
+        consistency_band=consistency_band,
     )
     s4 = "4) Small steps that often help:\n" + "\n".join(f"• {t}" for t in tips)
     s5 = f"5) {FEEDBACK_DISCLAIMER_EN}"
@@ -939,11 +995,15 @@ def _openai_feedback(payload: dict) -> str | None:
         "If the pre-computed assessment shows multiple_zero_nights=true, you MUST also include this exact sentence verbatim in part 2) "
         f"(same wording, copy exactly): \"{MULTIPLE_ZERO_NIGHTS_DATA_NOTICE_EN}\" "
         "(If both_logged_zeros is also true, still include the multiple_zero_nights sentence when the assessment requires it — it is short and fine next to the other line.) "
-        "If same bucket for latest and average, merge; no repetition.\n"
+        "If same bucket for latest and average, merge; no repetition. "
+        "When classification is excessive, do not praise long sleep as optimal — longer is not automatically better. "
+        "When hours are in-band and schedule consistency is steady, you may briefly affirm balanced, sustainable habits (this aligns with the app's top level).\n"
         "3) Why it matters: 2–4 short sentences, speak straight to them (you / your night). Skip stiff phrases like 'In your case, NAME,'. "
         "If both_logged_zeros, stay calm — you need real nights filled in before you coach the pattern. "
         "If multiple_zero_nights is true, favor 'maybe those nights did not save' over scolding about chronic sleep loss; do not treat several zeros mainly as ordinary sleep shortage. "
-        "If sleep is short otherwise, tie focus, mood, or energy lightly to what they shared.\n"
+        "If sleep is short otherwise, tie focus, mood, or energy lightly to what they shared. "
+        "If hours are above the age band, explain gently that balance and a steady schedule matter more than stacking extra sleep. "
+        "If consistency is variable, mention that a regular rhythm often helps as much as adding hours.\n"
         "4) Small steps: exactly three lines starting with '• ' — practical habits only, no medical instructions.\n"
         "5) Close with this exact disclaimer on its own line (copy verbatim, including line breaks if needed):\n"
         f"{FEEDBACK_DISCLAIMER_EN}\n\n"

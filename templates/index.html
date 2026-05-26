@@ -4013,6 +4013,10 @@
       const MAX_SCORABLE_SLEEP_HOURS = 16;
       const MIN_VALID_SLEEP_HOURS = 0.5;
       const SLEEP_POINT_WINDOW_DAYS = 7;
+      const SLEEP_SCORE_DURATION_WEIGHT = 0.34;
+      const SLEEP_SCORE_BEDTIME_WEIGHT = 0.33;
+      const SLEEP_SCORE_CONSISTENCY_WEIGHT = 0.33;
+      const CONSISTENCY_NEUTRAL_SCORE = 88;
       const AROUND_RANKING_WINDOW_DAYS = 7;
       const RANKING_WINDOW_DAYS = 28;
       const RANKING_MIN_RECORDS = 3;
@@ -6446,12 +6450,108 @@
         return 2;
       }
 
-      /** 0–100 from last night’s sleep hours vs recommended range (uses stored duration = final). */
+      /** 0–100 from sleep hours vs age-based range; peak inside [lo, hi], clearer penalty above hi. */
       function durationHoursScore(hours, lo, hi) {
         if (isNearZeroSleepHours(hours)) return 0;
         if (hours < lo) return Math.round(25 + (hours / lo) * 75);
-        if (hours > hi) return Math.max(45, Math.round(100 - Math.min(50, (hours - hi) * 8)));
-        return 100;
+        if (hours <= hi) return 100;
+        const excess = hours - hi;
+        const penalty = excess * 12 + Math.max(0, excess - 1) * 4;
+        return Math.max(42, Math.round(100 - Math.min(58, penalty)));
+      }
+
+      function meanAbsDeviation(values) {
+        if (!values || values.length < 2) return 0;
+        const sorted = [...values].sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        const median =
+          sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+        return values.reduce((sum, v) => sum + Math.abs(v - median), 0) / values.length;
+      }
+
+      function circularMeanSleepHours(hours) {
+        if (!hours.length) return 0;
+        const angles = hours.map((h) => (h / 24) * 2 * Math.PI);
+        const sinSum = angles.reduce((s, a) => s + Math.sin(a), 0);
+        const cosSum = angles.reduce((s, a) => s + Math.cos(a), 0);
+        if (Math.abs(sinSum) < 1e-9 && Math.abs(cosSum) < 1e-9) return hours[0];
+        let angle = Math.atan2(sinSum, cosSum);
+        if (angle < 0) angle += 2 * Math.PI;
+        return (angle / (2 * Math.PI)) * 24;
+      }
+
+      function circularBedtimeMad(hours) {
+        if (!hours || hours.length < 2) return 0;
+        const mean = circularMeanSleepHours(hours);
+        const devs = hours.map((h) => {
+          let d = Math.abs(h - mean);
+          if (d > 12) d = 24 - d;
+          return d;
+        });
+        return devs.reduce((a, b) => a + b, 0) / devs.length;
+      }
+
+      function spreadToConsistencyScore(mad, { tight, moderate, wide }) {
+        if (mad <= tight) return 100;
+        if (mad <= moderate) return Math.round(100 - ((mad - tight) / (moderate - tight)) * 15);
+        if (mad <= wide) return Math.round(85 - ((mad - moderate) / (wide - moderate)) * 30);
+        const extra = Math.min(mad - wide, 2);
+        return Math.max(42, Math.round(55 - extra * 15));
+      }
+
+      function scorableWindowEntries(history, index, windowNights = 7) {
+        const start = Math.max(0, index - windowNights + 1);
+        const bedHours = [];
+        const durHours = [];
+        for (let i = start; i <= index; i++) {
+          const entry = history[i];
+          if (!entry?.bedAt) continue;
+          const bh = bedAtToSleepHours(entry.bedAt);
+          if (bh == null) continue;
+          const hs = effectiveSleepHoursFromMs(entry.durationMs);
+          if (!isValidSleepHours(hs)) continue;
+          bedHours.push(bh);
+          durHours.push(hs);
+        }
+        return { bedHours, durHours };
+      }
+
+      function scheduleConsistencyScoreForHistory(history, index = null, windowNights = 7) {
+        const list = Array.isArray(history) ? history : [];
+        if (!list.length) return CONSISTENCY_NEUTRAL_SCORE;
+        const idx = index == null ? list.length - 1 : index;
+        const { bedHours, durHours } = scorableWindowEntries(list, idx, windowNights);
+        if (bedHours.length < 2) return CONSISTENCY_NEUTRAL_SCORE;
+        const bedMad = circularBedtimeMad(bedHours);
+        const durMad = meanAbsDeviation(durHours);
+        const bedScore = spreadToConsistencyScore(bedMad, {
+          tight: 0.35,
+          moderate: 0.85,
+          wide: 1.75,
+        });
+        const durScore = spreadToConsistencyScore(durMad, {
+          tight: 0.45,
+          moderate: 1.0,
+          wide: 2.0,
+        });
+        return Math.round((bedScore + durScore) / 2);
+      }
+
+      function compositeSleepPoint(durationScore, bedtimeScore, consistencyScore, hoursSlept, durHi) {
+        let composite =
+          durationScore * SLEEP_SCORE_DURATION_WEIGHT +
+          bedtimeScore * SLEEP_SCORE_BEDTIME_WEIGHT +
+          consistencyScore * SLEEP_SCORE_CONSISTENCY_WEIGHT;
+        if (
+          Number.isFinite(hoursSlept) &&
+          Number.isFinite(durHi) &&
+          hoursSlept > durHi
+        ) {
+          const excess = hoursSlept - durHi;
+          const dampen = Math.max(0.75, 1.0 - excess * 0.07);
+          composite *= dampen;
+        }
+        return clampSleepPoint(composite);
       }
 
       function getSleepLevelImageUrls() {
@@ -6514,7 +6614,8 @@
         const diffH = Math.abs(actualH - recH);
         const bedtimeScore = sleepScoreFromBedtimeDiffHours(diffH);
         const durationScore = durationHoursScore(hoursSlept, durLo, durHi);
-        return clampSleepPoint((bedtimeScore + durationScore) / 2);
+        const consistencyScore = scheduleConsistencyScoreForHistory(history, index);
+        return compositeSleepPoint(durationScore, bedtimeScore, consistencyScore, hoursSlept, durHi);
       }
 
       /** Latest-night sleep score for a registered user, or null if not scorable. */
@@ -6623,9 +6724,9 @@
 
       const SLEEP_METRIC_TIP_TEXT = {
         point:
-          "Sleep Point: 0 ~ 100 points\nThe point is calculated by how different is  your sleep time and the recommended. The more it is, the lower your points are.",
+          "Sleep Point: 0 ~ 100 points\nYour score blends three things: sleep duration near your age-based range, bedtime timing, and how steady your recent schedule is.\nStaying inside the recommended hours with a regular rhythm earns the highest points — longer sleep alone does not.",
         level:
-          "Sleep Level: 1 ~ 5 levels\nThe level is calculated by your points.\n- 00 ~ 19 = Lv. 1\n- 20 ~ 39 = Lv. 2\n- 40 ~ 59 = Lv. 3\n- 60 ~ 79 = Lv. 4\n- 80 ~ 100 = Lv. 5",
+          "Sleep Level: 1 ~ 5 levels\nThe level is calculated by your weekly average Sleep Point.\n- 00 ~ 19 = Lv. 1\n- 20 ~ 39 = Lv. 2\n- 40 ~ 59 = Lv. 3\n- 60 ~ 79 = Lv. 4\n- 80 ~ 100 = Lv. 5\nLevel 5 (Good Sleep) reflects balanced, consistent nights — not just extra-long sleep.",
       };
 
       let sleepMetricTipTimer = null;
@@ -6758,7 +6859,7 @@
         if (memberLayout) {
           const levelSub = document.createElement("p");
           levelSub.className = "sleep-score-line sleep-score-level-subline";
-          levelSub.textContent = "Based on your sleep quality in the last 7 days.";
+          levelSub.textContent = "Based on balanced duration, timing, and consistency over the last 7 days.";
           block.appendChild(levelSub);
         }
 
