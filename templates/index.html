@@ -2417,6 +2417,10 @@
         font-size: 13px;
         color: rgba(255, 255, 255, 0.55);
         line-height: 1.45;
+        white-space: pre-line;
+        max-width: 22em;
+        margin-left: auto;
+        margin-right: auto;
       }
 
       @media (max-width: 520px) {
@@ -3907,8 +3911,10 @@
       const AROUND_RANKING_WINDOW_DAYS = 7;
       const RANKING_WINDOW_DAYS = 28;
       const RANKING_MIN_RECORDS = 3;
-      const RANKING_INELIGIBLE_MESSAGE = "Need at least 3 sleep records in the last 28 days.";
-      const AROUND_RANKING_INELIGIBLE_MESSAGE = "Need at least 3 sleep records in the last 7 days.";
+      const RANKING_INELIGIBLE_MESSAGE =
+        "Need at least 3 sleep records\nwithin the last 28 days.";
+      const AROUND_RANKING_INELIGIBLE_MESSAGE =
+        "Need at least 3 sleep records\nwithin the last 7 days.";
       let lastMemberRankingsPayload = null;
 
       const GUEST_DUMMY_RANKINGS = {

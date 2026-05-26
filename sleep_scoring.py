@@ -12,8 +12,8 @@ SLEEP_POINT_WINDOW_DAYS = 7
 AROUND_RANKING_WINDOW_DAYS = 7
 RANKING_WINDOW_DAYS = 28
 RANKING_MIN_RECORDS = 3
-RANKING_INELIGIBLE_MESSAGE = "Need at least 3 sleep records in the last 28 days."
-AROUND_RANKING_INELIGIBLE_MESSAGE = "Need at least 3 sleep records in the last 7 days."
+RANKING_INELIGIBLE_MESSAGE = "Need at least 3 sleep records\nwithin the last 28 days."
+AROUND_RANKING_INELIGIBLE_MESSAGE = "Need at least 3 sleep records\nwithin the last 7 days."
 
 
 def recommended_sleep_range_hours(age: int | None) -> tuple[float, float]:
