@@ -2676,6 +2676,29 @@
         max-width: 28ch;
       }
 
+      .sleep-score-last-week {
+        margin: 0;
+        font-size: clamp(13px, 2.4vw, 15px);
+        font-weight: 650;
+        line-height: 1.45;
+        color: rgba(255, 255, 255, 0.78);
+      }
+
+      .sleep-score-last-week[hidden] {
+        display: none !important;
+      }
+
+      .sleep-score-growth-line {
+        margin-top: 4px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .sleep-score-growth-value {
+        color: #22d3ee;
+        font-weight: 800;
+      }
+
       .sleep-score-point-display[hidden] {
         display: none !important;
       }
@@ -3572,6 +3595,7 @@
                 <span class="sleep-score-points-label">Points</span>
               </div>
               <span class="sleep-score-period-badge" id="sleepScorePeriodBadge" hidden>This Week</span>
+              <p class="sleep-score-last-week" id="sleepScoreLastWeekLine" hidden></p>
             </div>
             <p class="sleep-score-level" id="sleepScoreLevel">Lv.—</p>
             <div class="sleep-score-detail" id="sleepScoreDetail"></div>
@@ -5085,10 +5109,24 @@
         if (badge) badge.hidden = !show;
       }
 
+      function setSleepScoreLastWeekLineVisible(show, hoursSlept) {
+        const line = $("sleepScoreLastWeekLine");
+        if (!line) return;
+        if (!show) {
+          line.hidden = true;
+          line.textContent = "";
+          return;
+        }
+        line.hidden = false;
+        line.textContent = formatMemberLastWeekLine(hoursSlept);
+      }
+
       function applySleepScorePageUi(session) {
         const guestNote = $("sleepScoreGuestNote");
+        const isMember = Boolean(session && session.email && !isGuestSession(session));
         if (guestNote) guestNote.hidden = !session || !isGuestSession(session);
-        setSleepScorePeriodBadgeVisible(Boolean(session && session.email && !isGuestSession(session)));
+        setSleepScorePeriodBadgeVisible(isMember);
+        if (!isMember) setSleepScoreLastWeekLineVisible(false);
       }
 
       function getSleepGoalOptionsForAge(age) {
@@ -6310,6 +6348,12 @@
         return `Last week: ${hoursSlept.toFixed(1)} h recorded.`;
       }
 
+      /** Logged-in hero line (matches sample_level mockup). */
+      function formatMemberLastWeekLine(hoursSlept) {
+        if (isNearZeroSleepHours(hoursSlept)) return "Last week: 0 recorded.";
+        return `Last week: ${hoursSlept.toFixed(1)} recorded.`;
+      }
+
       function sleepScoreAgeBaselineNote(age) {
         if (age == null || !Number.isFinite(Number(age))) {
           return `Age not set - use ${DEFAULT_USER_AGE} year baseline`;
@@ -6323,7 +6367,7 @@
         level,
         age,
         totalGrowth,
-        memberLevelSubline = false,
+        memberLayout = false,
       }) {
         const detEl = $("sleepScoreDetail");
         const hero = $("sleepScoreHero");
@@ -6336,10 +6380,12 @@
         const block = document.createElement("div");
         block.className = "sleep-score-detail-block";
 
-        const weekLine = document.createElement("p");
-        weekLine.className = "sleep-score-line";
-        weekLine.textContent = formatLastWeekHoursLine(hoursSlept);
-        block.appendChild(weekLine);
+        if (!memberLayout) {
+          const weekLine = document.createElement("p");
+          weekLine.className = "sleep-score-line";
+          weekLine.textContent = formatLastWeekHoursLine(hoursSlept);
+          block.appendChild(weekLine);
+        }
 
         const pointLine = document.createElement("p");
         pointLine.className = "sleep-score-line sleep-score-metric-line";
@@ -6351,7 +6397,7 @@
         levelLine.append("Your ", createSleepMetricTermButton("Sleep Level", "level"), `: ${level}`);
         block.appendChild(levelLine);
 
-        if (memberLevelSubline) {
+        if (memberLayout) {
           const levelSub = document.createElement("p");
           levelSub.className = "sleep-score-line sleep-score-level-subline";
           levelSub.textContent = "Based on your sleep quality in the last 7 days.";
@@ -6360,8 +6406,14 @@
 
         if (totalGrowth != null) {
           const growthLine = document.createElement("p");
-          growthLine.className = "sleep-score-line sleep-score-metric-line";
-          growthLine.append("Total Growth Points: ", document.createTextNode(String(totalGrowth)));
+          growthLine.className = memberLayout
+            ? "sleep-score-line sleep-score-metric-line sleep-score-growth-line"
+            : "sleep-score-line sleep-score-metric-line";
+          growthLine.append("Total Growth Points: ");
+          const growthVal = document.createElement("span");
+          growthVal.className = memberLayout ? "sleep-score-growth-value" : "";
+          growthVal.textContent = memberLayout ? `${totalGrowth}Point` : String(totalGrowth);
+          growthLine.appendChild(growthVal);
           block.appendChild(growthLine);
         }
 
@@ -6381,6 +6433,7 @@
         const pointDisplay = $("sleepScorePointDisplay");
         const lvlEl = $("sleepScoreLevel");
         const hero = $("sleepScoreHero");
+        setSleepScoreLastWeekLineVisible(false);
         if (pointDisplay) pointDisplay.hidden = false;
         if (valEl) valEl.textContent = "0";
         if (lvlEl) {
@@ -6402,6 +6455,7 @@
         const pointDisplay = $("sleepScorePointDisplay");
         const lvlEl = $("sleepScoreLevel");
         const hero = $("sleepScoreHero");
+        setSleepScoreLastWeekLineVisible(false);
         const age = getSessionAgeForScoring(session);
         const { bucket } = getSleepBucket(session.email);
         const list = bucket.history || [];
@@ -6457,13 +6511,14 @@
           lvlEl.textContent = `Lv.${lvForImage}`;
         }
         setSleepLevelImage(lvForImage);
+        setSleepScoreLastWeekLineVisible(true, hoursLast7);
         renderSleepScoreDetailStructured({
           hoursSlept: hoursLast7,
           score: weeklyPoint,
           level: weeklyLevel,
           age,
           totalGrowth,
-          memberLevelSubline: true,
+          memberLayout: true,
         });
         if (hero) hero.classList.add("sleep-score-hero--structured");
       }
@@ -6856,6 +6911,7 @@
         const showPlainDetail = (msg) => {
           hideSleepMetricTip();
           setSleepScorePeriodBadgeVisible(false);
+          setSleepScoreLastWeekLineVisible(false);
           if (hero) hero.classList.remove("sleep-score-hero--structured");
           if (pointDisplay) pointDisplay.hidden = true;
           if (valEl) {
