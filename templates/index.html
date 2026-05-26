@@ -2779,6 +2779,22 @@
         font-size: 14px;
       }
 
+      .sleep-score-guest-note {
+        margin: 14px 0 0;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(251, 191, 36, 0.35);
+        background: rgba(251, 191, 36, 0.08);
+        color: rgba(254, 243, 199, 0.92);
+        font-size: 13px;
+        line-height: 1.45;
+        text-align: center;
+      }
+
+      .sleep-score-guest-note[hidden] {
+        display: none;
+      }
+
       .return-sleep-btn {
         position: absolute;
         right: 18px;
@@ -3357,7 +3373,7 @@
                   <path d="M32 10v7M32 47v7M10 32h7M47 32h7M16.5 16.5l5 5M42.5 42.5l5 5M16.5 47.5l5-5M42.5 21.5l5-5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
                 </svg>
               </span>
-              <span class="sleep-btn-label">Are U Awoke?</span>
+              <span class="sleep-btn-label">I'm Awake</span>
               <span class="sleep-btn-dots" aria-label="0 of 2 clicks">
                 <span class="sleep-dot"></span>
                 <span class="sleep-dot"></span>
@@ -3509,6 +3525,9 @@
             </div>
             <p class="sleep-score-level" id="sleepScoreLevel">Lv.—</p>
             <div class="sleep-score-detail" id="sleepScoreDetail"></div>
+            <p class="sleep-score-guest-note" id="sleepScoreGuestNote" hidden>
+              Guest mode: your sleep data stays on this device. Sign up to sync across devices and join the global ranking.
+            </p>
           </div>
         </div>
       </section>
@@ -3767,6 +3786,28 @@
 
       /** Reserved session email for guest mode (device-local sleep data only). */
       const GUEST_SESSION_EMAIL = "__guest__@zzzetox.local";
+      const MAX_SCORABLE_SLEEP_HOURS = 16;
+      const RANKING_WINDOW_DAYS = 7;
+      const RANKING_MIN_RECORDS = 3;
+      const RANKING_INELIGIBLE_MESSAGE = "Need at least 3 sleep records in the last 7 days.";
+      let lastMemberRankingsPayload = null;
+
+      const GUEST_DUMMY_RANKINGS = {
+        nations: [
+          { rank: 1, country: "South Korea" },
+          { rank: 2, country: "Japan" },
+          { rank: 3, country: "United States" },
+          { rank: 4, country: "Canada" },
+          { rank: 5, country: "United Kingdom" },
+        ],
+        sleepers: [
+          { rank: 1, name: "Luna", country: "South Korea", score: 512 },
+          { rank: 2, name: "Noah", country: "Japan", score: 498 },
+          { rank: 3, name: "Mia", country: "United States", score: 487 },
+          { rank: 4, name: "Leo", country: "Canada", score: 476 },
+          { rank: 5, name: "Ava", country: "United Kingdom", score: 465 },
+        ],
+      };
 
       const MIN_USER_AGE = 10;
       const MAX_USER_AGE = 24;
@@ -4043,6 +4084,57 @@
 
       function nowISO() {
         return new Date().toISOString();
+      }
+
+      const APP_DATETIME_LOCALE = "en-US";
+
+      const APP_DATETIME_FORMAT = {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      };
+
+      const APP_DATE_FORMAT = {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      };
+
+      const APP_TIME_FORMAT = {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      };
+
+      const APP_MONTH_SHORT_FORMAT = {
+        month: "short",
+      };
+
+      function toAppDate(value) {
+        if (value instanceof Date) return value;
+        const d = new Date(value);
+        return Number.isNaN(d.getTime()) ? null : d;
+      }
+
+      function formatAppDateTime(value) {
+        const d = toAppDate(value);
+        if (!d) return "—";
+        return d.toLocaleString(APP_DATETIME_LOCALE, APP_DATETIME_FORMAT);
+      }
+
+      function formatAppDate(value) {
+        const d = toAppDate(value);
+        if (!d) return "—";
+        return d.toLocaleDateString(APP_DATETIME_LOCALE, APP_DATE_FORMAT);
+      }
+
+      function formatAppTime(value) {
+        const d = toAppDate(value);
+        if (!d) return "—";
+        return d.toLocaleTimeString(APP_DATETIME_LOCALE, APP_TIME_FORMAT);
       }
 
       function normalizeEmail(email) {
@@ -4399,6 +4491,7 @@
       function scheduleSleepServerPush() {
         const session = getCurrentSessionOrNull();
         if (!session || !session.authToken || isGuestSession(session)) return;
+        if (isGuestAccountEmail(session.email)) return;
         if (sleepServerPushTimer) window.clearTimeout(sleepServerPushTimer);
         sleepServerPushTimer = window.setTimeout(() => {
           sleepServerPushTimer = null;
@@ -4408,8 +4501,10 @@
 
       async function pushSleepBucketToServer(email) {
         const session = getCurrentSessionOrNull();
-        if (!session || !session.authToken || session.email !== email) return false;
-        const { bucket } = getSleepBucket(email);
+        const normalized = normalizeEmail(email);
+        if (!session || !session.authToken || isGuestSession(session)) return false;
+        if (isGuestAccountEmail(normalized) || normalizeEmail(session.email) !== normalized) return false;
+        const { bucket } = getSleepBucket(normalized);
         try {
           const { res, data } = await apiAuthFetch("/api/account/sleep", {
             method: "PUT",
@@ -4470,8 +4565,33 @@
         localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
       }
 
+      function clearRankingsSessionCache() {
+        lastMemberRankingsPayload = null;
+        rankingsMemberExpand = { around: false, top: false, nations: false };
+        const listIds = [
+          "rankingsTopSleepersList",
+          "rankingsAroundList",
+          "rankingsNationsGrid",
+          "rankingsNationsList",
+          "rankingsSleepersList",
+        ];
+        for (const id of listIds) {
+          const el = $(id);
+          if (el) el.replaceChildren();
+        }
+        const rankEl = $("rankingsMyRankValue");
+        const scoreEl = $("rankingsMyScore");
+        const nameEl = $("rankingsMyName");
+        const flagEl = $("rankingsMyFlag");
+        if (rankEl) rankEl.textContent = "#—";
+        if (scoreEl) scoreEl.textContent = "— pt";
+        if (nameEl) nameEl.textContent = "—";
+        if (flagEl) flagEl.textContent = "";
+      }
+
       function clearSession() {
         localStorage.removeItem(STORAGE_KEYS.SESSION);
+        clearRankingsSessionCache();
         try {
           sessionStorage.removeItem(TRACKER_ENTRY_NOTICE_KEY);
         } catch {
@@ -4495,6 +4615,59 @@
 
       function isGuestSession(session) {
         return Boolean(session && (session.isGuest === true || session.email === GUEST_SESSION_EMAIL));
+      }
+
+      function isGuestAccountEmail(email) {
+        return normalizeEmail(email) === GUEST_SESSION_EMAIL;
+      }
+
+      /** Sleep bucket for the active session only (never mix guest vs registered keys). */
+      function getSleepBucketForSession(session) {
+        if (!session?.email) {
+          return {
+            store: loadSleepStore(),
+            bucket: { activeStartAt: null, history: [], sleepGoalHours: null },
+          };
+        }
+        const store = loadSleepStore();
+        const key = isGuestSession(session) ? GUEST_SESSION_EMAIL : normalizeEmail(session.email);
+        if (!isGuestSession(session) && isGuestAccountEmail(key)) {
+          return {
+            store,
+            bucket: { activeStartAt: null, history: [], sleepGoalHours: null },
+          };
+        }
+        const bucket = store[key] || { activeStartAt: null, history: [], sleepGoalHours: null };
+        return { store, bucket };
+      }
+
+      function sanitizeServerRankingsPayload(data) {
+        const nations = Array.isArray(data?.nations) ? data.nations : [];
+        const sleepers = (Array.isArray(data?.sleepers) ? data.sleepers : [])
+          .filter((row) => !isGuestAccountEmail(row?.email))
+          .map((row) => ({
+            rank: Number(row.rank) || 0,
+            name: row.name,
+            country: row.country,
+            score: row.score,
+            email: row.email || "",
+          }))
+          .filter((row) => row.rank > 0);
+        const viewer =
+          data?.viewer && typeof data.viewer === "object"
+            ? {
+                eligible: Boolean(data.viewer.eligible),
+                message: String(data.viewer.message || RANKING_INELIGIBLE_MESSAGE),
+                rank: data.viewer.rank != null ? Number(data.viewer.rank) : null,
+                score: data.viewer.score != null ? Number(data.viewer.score) : null,
+              }
+            : {
+                eligible: false,
+                message: RANKING_INELIGIBLE_MESSAGE,
+                rank: null,
+                score: null,
+              };
+        return { nations, sleepers, viewer };
       }
 
       function getCurrentSessionOrNull() {
@@ -4851,6 +5024,16 @@
         return u?.age ?? null;
       }
 
+      /** Age for sleep scoring (guests use default baseline when age is unset). */
+      function getSessionAgeForScoring(session) {
+        return getUserAgeForGoal(session);
+      }
+
+      function applySleepScorePageUi(session) {
+        const guestNote = $("sleepScoreGuestNote");
+        if (guestNote) guestNote.hidden = !session || !isGuestSession(session);
+      }
+
       function getSleepGoalOptionsForAge(age) {
         const a = Number(age);
         if (Number.isFinite(a) && a >= MIN_USER_AGE && a <= 17) return [8, 9, 10];
@@ -4971,44 +5154,6 @@
         }
       }
 
-      function isTrackerPageVisible() {
-        const p = $("trackerPage");
-        return Boolean(p && !p.hidden);
-      }
-
-      function bumpWakeupFromAlternateInput(mode) {
-        if (!isTrackerPageVisible()) return;
-        const session = getCurrentSessionOrNull();
-        if (!session) return;
-        if (!getSleepBucket(session.email).bucket.activeStartAt) return;
-        const wakeupBtn = $("wakeupBtn");
-        if (!wakeupBtn || wakeupBtn.disabled) return;
-        const coarse = window.matchMedia("(pointer: coarse)").matches;
-        if (mode === "touch" && !coarse) return;
-        if (mode === "key" && coarse) return;
-        handleTwoStepClick("wakeup", recordWakeup);
-      }
-
-      function onGlobalSleepWakeupKey(ev) {
-        if (!isTrackerPageVisible()) return;
-        if (ev.repeat) return;
-        if (ev.key === "Tab") return;
-        if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
-        const target = ev.target;
-        if (target instanceof Element && target.closest("input, textarea, select, [contenteditable='true']")) return;
-        if (target instanceof Element && target.closest("#wakeupBtn")) return;
-        bumpWakeupFromAlternateInput("key");
-      }
-
-      function onGlobalSleepWakeupTouch(ev) {
-        if (!isTrackerPageVisible()) return;
-        if (!window.matchMedia("(pointer: coarse)").matches) return;
-        const target = ev.target;
-        if (!(target instanceof Element)) return;
-        if (target.closest("#wakeupBtn")) return;
-        bumpWakeupFromAlternateInput("touch");
-      }
-
       function updateActionAvailability() {
         const session = getCurrentSessionOrNull();
         const bedtimeBtn = $("bedtimeBtn");
@@ -5044,8 +5189,17 @@
       }
 
       function getSleepBucket(email) {
+        const normalized = normalizeEmail(email);
+        const session = getCurrentSessionOrNull();
+        const empty = { activeStartAt: null, history: [], sleepGoalHours: null };
+        if (session && !isGuestSession(session) && isGuestAccountEmail(normalized)) {
+          return { store: loadSleepStore(), bucket: { ...empty } };
+        }
+        if (session && isGuestSession(session) && normalized !== GUEST_SESSION_EMAIL) {
+          return { store: loadSleepStore(), bucket: { ...empty } };
+        }
         const store = loadSleepStore();
-        const bucket = store[email] || { activeStartAt: null, history: [], sleepGoalHours: null };
+        const bucket = store[normalized] || { ...empty };
         if (bucket.sleepGoalHours === undefined) bucket.sleepGoalHours = null;
         return { store, bucket };
       }
@@ -5158,7 +5312,7 @@
         const monthEl = $("progressCalendarMonth");
         const dayEl = $("progressCalendarDay");
         if (!monthEl || !dayEl) return;
-        monthEl.textContent = now.toLocaleString("en-US", { month: "short" });
+        monthEl.textContent = now.toLocaleString(APP_DATETIME_LOCALE, APP_MONTH_SHORT_FORMAT);
         dayEl.textContent = String(now.getDate());
       }
 
@@ -5328,12 +5482,12 @@
         if (active) {
           const elapsedMs = Date.now() - active.getTime();
           timerEl.textContent = formatDuration(elapsedMs);
-          metaEl.textContent = `Bedtime started: ${active.toLocaleString()} | Keeps running while locked or after you turn the device off. Press wakeup when you are done.`;
+          metaEl.textContent = `Bedtime started: ${formatAppDateTime(active)} | Keeps running while locked or after you turn the device off. Press wakeup when you are done.`;
         } else {
           timerEl.textContent = "00:00:00";
           const recent = bucket.history[bucket.history.length - 1];
           if (recent) {
-            metaEl.textContent = `Recent sleep: ${recent.durationText} (recorded at ${new Date(recent.wokeAt).toLocaleString()})`;
+            metaEl.textContent = `Recent sleep: ${recent.durationText} (recorded at ${formatAppDateTime(recent.wokeAt)})`;
           } else {
             metaEl.textContent = "No records yet. Press Start Bedtime to create your first record.";
           }
@@ -5601,7 +5755,7 @@
         const mm = Math.round((h24 - hh) * 60);
         const d = new Date();
         d.setHours(hh, mm, 0, 0);
-        return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+        return formatAppTime(d);
       }
 
       /** Hours between actual and recommended bedtime (same night scale). */
@@ -5764,6 +5918,29 @@
         return !Number.isFinite(hours) || hours <= SLEEP_HOUR_EPS;
       }
 
+      function effectiveSleepHoursFromMs(durationMs) {
+        let hours = Math.max(0, Number(durationMs) || 0) / (1000 * 60 * 60);
+        if (hours > MAX_SCORABLE_SLEEP_HOURS) hours = MAX_SCORABLE_SLEEP_HOURS;
+        return hours;
+      }
+
+      /** Night indices with bedAt in (asOf - days, asOf] using device clock. */
+      function historyIndicesInWindow(history, asOf = new Date(), days = RANKING_WINDOW_DAYS) {
+        const list = Array.isArray(history) ? history : [];
+        const endTs = asOf.getTime();
+        const startTs = endTs - days * 24 * 60 * 60 * 1000;
+        const indices = [];
+        for (let i = 0; i < list.length; i++) {
+          const entry = list[i];
+          if (!entry?.bedAt) continue;
+          const bed = new Date(entry.bedAt);
+          if (Number.isNaN(bed.getTime())) continue;
+          const ts = bed.getTime();
+          if (ts > startTs && ts <= endTs) indices.push(i);
+        }
+        return indices;
+      }
+
       /**
        * Last night ~0 h: score 0–5 only (not the usual 0–100 blend).
        * Chronic near-zero average → 0–1; usually sleeps well → 4–5 (likely mis-press).
@@ -5852,7 +6029,7 @@
         const actualH = bedAtToSleepHours(entry.bedAt);
         if (actualH == null) return null;
         const recH = recommendedBedtimeSleepHours(age);
-        const hoursSlept = Math.max(0, (Number(entry.durationMs) || 0) / (1000 * 60 * 60));
+        const hoursSlept = effectiveSleepHoursFromMs(entry.durationMs);
         const [durLo, durHi] = recommendedSleepRangeHoursClient(age);
         const prefix = history.slice(0, index + 1);
 
@@ -5867,17 +6044,63 @@
       }
 
       /** Latest-night sleep score for a registered user, or null if not scorable. */
-      function computeLatestSleepScore(email) {
-        const users = loadUsers();
-        const user = users[email] || {};
+      function computeLatestSleepScore(email, ageOverride) {
+        const session = getCurrentSessionOrNull();
+        const age =
+          ageOverride != null
+            ? ageOverride
+            : session?.email === email
+              ? getSessionAgeForScoring(session)
+              : loadUsers()[email]?.age;
         const { bucket } = getSleepBucket(email);
         const list = bucket.history || [];
         if (!list.length) return null;
-        return scoreHistoryEntry(user.age, list, list.length - 1);
+        return scoreHistoryEntry(age, list, list.length - 1);
+      }
+
+      /** Average Sleep Point for scorable nights in the last 7 days (device clock). */
+      function computeWeeklyAverageSleepPoint(age, history, asOf = new Date()) {
+        const list = Array.isArray(history) ? history : [];
+        const indices = historyIndicesInWindow(list, asOf);
+        let total = 0;
+        let count = 0;
+        for (const i of indices) {
+          const score = scoreHistoryEntry(age, list, i);
+          if (score == null) continue;
+          total += score;
+          count += 1;
+        }
+        if (count === 0) return 0;
+        return Math.round(total / count);
+      }
+
+      /** Sum of Sleep Points for every recorded night (Total Growth Points). */
+      function computeTotalGrowthPoints(age, history) {
+        const list = Array.isArray(history) ? history : [];
+        let total = 0;
+        for (let i = 0; i < list.length; i++) {
+          const score = scoreHistoryEntry(age, list, i);
+          if (score == null || score <= 0) continue;
+          total += score;
+        }
+        return total;
+      }
+
+      function sumHoursLast7Nights(history, asOf = new Date()) {
+        const list = Array.isArray(history) ? history : [];
+        const indices = historyIndicesInWindow(list, asOf);
+        let sum = 0;
+        for (const i of indices) {
+          const entry = list[i];
+          if (!entry) continue;
+          sum += effectiveSleepHoursFromMs(entry.durationMs);
+        }
+        return sum;
       }
 
       /** Highest scorable night (for rankings when the same account syncs from multiple devices). */
       function computeBestSleepScore(email) {
+        if (isGuestAccountEmail(email)) return null;
         const users = loadUsers();
         const user = users[email] || {};
         const { bucket } = getSleepBucket(email);
@@ -6016,7 +6239,7 @@
         return "";
       }
 
-      function renderSleepScoreDetailStructured({ hoursSlept, score, level, age }) {
+      function renderSleepScoreDetailStructured({ hoursSlept, score, level, age, totalGrowth }) {
         const detEl = $("sleepScoreDetail");
         const hero = $("sleepScoreHero");
         if (!detEl) return;
@@ -6043,6 +6266,13 @@
         levelLine.append("Your ", createSleepMetricTermButton("Sleep Level", "level"), `: ${level}`);
         block.appendChild(levelLine);
 
+        if (totalGrowth != null) {
+          const growthLine = document.createElement("p");
+          growthLine.className = "sleep-score-line sleep-score-metric-line";
+          growthLine.append("Total Growth Points: ", document.createTextNode(String(totalGrowth)));
+          block.appendChild(growthLine);
+        }
+
         const ageNote = sleepScoreAgeBaselineNote(age);
         if (ageNote) {
           const ageLine = document.createElement("p");
@@ -6054,31 +6284,144 @@
         detEl.appendChild(block);
       }
 
+      function renderGuestSleepScoreZeroState(age) {
+        const valEl = $("sleepScoreValue");
+        const pointDisplay = $("sleepScorePointDisplay");
+        const lvlEl = $("sleepScoreLevel");
+        const hero = $("sleepScoreHero");
+        if (pointDisplay) pointDisplay.hidden = false;
+        if (valEl) valEl.textContent = "0";
+        if (lvlEl) {
+          lvlEl.hidden = true;
+          lvlEl.textContent = "Lv.1";
+        }
+        setSleepLevelImage(1);
+        renderSleepScoreDetailStructured({
+          hoursSlept: 0,
+          score: 0,
+          level: 1,
+          age,
+        });
+        if (hero) hero.classList.add("sleep-score-hero--structured");
+      }
+
+      function renderGuestSleepScorePage(session) {
+        const valEl = $("sleepScoreValue");
+        const pointDisplay = $("sleepScorePointDisplay");
+        const lvlEl = $("sleepScoreLevel");
+        const hero = $("sleepScoreHero");
+        const age = getSessionAgeForScoring(session);
+        const { bucket } = getSleepBucket(session.email);
+        const list = bucket.history || [];
+        const asOf = new Date();
+        const indices = historyIndicesInWindow(list, asOf);
+
+        if (!indices.length) {
+          renderGuestSleepScoreZeroState(age);
+          return;
+        }
+
+        const weeklyPoint = computeWeeklyAverageSleepPoint(age, list, asOf);
+        const weeklyLevel = levelFromSleepScore(weeklyPoint);
+        const hoursLast7 = sumHoursLast7Nights(list, asOf);
+        const lvForImage = Math.max(1, Math.min(5, weeklyLevel));
+
+        if (pointDisplay) pointDisplay.hidden = false;
+        if (valEl) valEl.textContent = String(weeklyPoint);
+        if (lvlEl) {
+          lvlEl.hidden = true;
+          lvlEl.textContent = `Lv.${lvForImage}`;
+        }
+        setSleepLevelImage(lvForImage);
+        renderSleepScoreDetailStructured({
+          hoursSlept: hoursLast7,
+          score: weeklyPoint,
+          level: weeklyLevel,
+          age,
+        });
+        if (hero) hero.classList.add("sleep-score-hero--structured");
+      }
+
+      function renderMemberSleepScorePage(session) {
+        const valEl = $("sleepScoreValue");
+        const pointDisplay = $("sleepScorePointDisplay");
+        const lvlEl = $("sleepScoreLevel");
+        const hero = $("sleepScoreHero");
+        const age = getSessionAgeForScoring(session);
+        const { bucket } = getSleepBucket(session.email);
+        const list = bucket.history || [];
+        const asOf = new Date();
+
+        const weeklyPoint = computeWeeklyAverageSleepPoint(age, list, asOf);
+        const weeklyLevel = levelFromSleepScore(weeklyPoint);
+        const totalGrowth = computeTotalGrowthPoints(age, list);
+        const hoursLast7 = sumHoursLast7Nights(list, asOf);
+        const lvForImage = Math.max(1, Math.min(5, weeklyLevel));
+
+        if (pointDisplay) pointDisplay.hidden = false;
+        if (valEl) valEl.textContent = String(weeklyPoint);
+        if (lvlEl) {
+          lvlEl.hidden = true;
+          lvlEl.textContent = `Lv.${lvForImage}`;
+        }
+        setSleepLevelImage(lvForImage);
+        renderSleepScoreDetailStructured({
+          hoursSlept: hoursLast7,
+          score: weeklyPoint,
+          level: weeklyLevel,
+          age,
+          totalGrowth,
+        });
+        if (hero) hero.classList.add("sleep-score-hero--structured");
+      }
+
+      function buildGuestDummyRankings() {
+        return {
+          nations: GUEST_DUMMY_RANKINGS.nations.map((row) => ({ ...row })),
+          sleepers: GUEST_DUMMY_RANKINGS.sleepers.map((row) => ({ ...row })),
+          viewer: { eligible: false, message: "", rank: null, score: null },
+          fromGuestDummy: true,
+        };
+      }
+
       async function fetchGlobalRankings() {
-        await syncSleepBeforeRankings();
         const session = getCurrentSessionOrNull();
+        if (isGuestSession(session)) {
+          return buildGuestDummyRankings();
+        }
+
+        await syncSleepBeforeRankings();
         const headers = { Accept: "application/json" };
-        if (session?.authToken && !isGuestSession(session)) {
+        if (session?.authToken) {
           headers.Authorization = `Bearer ${session.authToken}`;
         }
+        const asOf = encodeURIComponent(new Date().toISOString());
         try {
-          const res = await fetch("/api/rankings", { headers, cache: "no-store" });
+          const res = await fetch(`/api/rankings?asOf=${asOf}`, { headers, cache: "no-store" });
           const data = await res.json().catch(() => ({}));
           if (res.ok && data && data.ok) {
+            const cleaned = sanitizeServerRankingsPayload(data);
+            lastMemberRankingsPayload = cleaned;
             return {
-              nations: Array.isArray(data.nations) ? data.nations : [],
-              sleepers: (Array.isArray(data.sleepers) ? data.sleepers : []).map((row) => ({
-                name: row.name,
-                country: row.country,
-                score: row.score,
-                email: row.email || "",
-              })),
+              nations: cleaned.nations,
+              sleepers: cleaned.sleepers,
+              viewer: cleaned.viewer,
             };
           }
         } catch {
           /* server unavailable */
         }
-        return { nations: [], sleepers: [], error: true };
+        return {
+          nations: [],
+          sleepers: [],
+          viewer: {
+            eligible: false,
+            message: RANKING_INELIGIBLE_MESSAGE,
+            rank: null,
+            score: null,
+          },
+          error: true,
+        };
       }
 
       function rankingsRankBadgeClass(rank) {
@@ -6094,12 +6437,20 @@
         nations: false,
       };
 
-      function findMySleeperIndex(sleepers, { email, name, country }) {
+      function findMySleeperIndex(sleepers, { email, name, country }, options = {}) {
+        if (options.emailOnly && email) {
+          const normEmail = normalizeEmail(email);
+          for (let i = 0; i < sleepers.length; i++) {
+            const row = sleepers[i];
+            if (row.email && normalizeEmail(row.email) === normEmail) return i;
+          }
+          return -1;
+        }
         const normName = String(name || "").trim().toLowerCase();
         const countryDisp = resolveCountryForFlag(country).displayName;
         for (let i = 0; i < sleepers.length; i++) {
           const row = sleepers[i];
-          if (email && row.email && row.email === email) return i;
+          if (email && row.email && normalizeEmail(row.email) === normalizeEmail(email)) return i;
           if (!normName) continue;
           if (String(row.name || "").trim().toLowerCase() !== normName) continue;
           if (!countryDisp) return i;
@@ -6181,12 +6532,20 @@
         rows.forEach((row) => listEl.appendChild(renderRow(row)));
       }
 
-      function renderGuestRankingsPage({ nations, sleepers, myCountry, myEmail, myName }) {
+      function renderGuestRankingsPage({ nations, sleepers }) {
         const nationsEl = $("rankingsNationsList");
         const sleepersEl = $("rankingsSleepersList");
+        const guestNote = $("rankingsGuestInfoNote");
+        if (guestNote) {
+          const span = guestNote.querySelector("span:last-child");
+          if (span) {
+            span.textContent =
+              "Sample rankings for preview only. Sign up to join the real global sleep challenge.";
+          }
+        }
         renderRankingsPanelList(
           nationsEl,
-          nations.slice(0, 5).map((row, index) => ({ ...row, rank: index + 1 })),
+          nations.slice(0, 5),
           (row) => {
             const { alpha2, displayName } = resolveCountryForFlag(row.country);
             return renderRankingsSleeperRow({
@@ -6194,40 +6553,40 @@
               flag: alpha2ToFlagEmoji(alpha2),
               label: displayName || row.country || "—",
               points: null,
-              highlight: Boolean(myCountry && (displayName || row.country) === myCountry),
+              highlight: false,
             });
           }
         );
         renderRankingsPanelList(
           sleepersEl,
-          sleepers.slice(0, 5).map((row, index) => ({ ...row, rank: index + 1 })),
+          sleepers.slice(0, 5),
           (row) => {
             const { alpha2 } = resolveCountryForFlag(row.country);
-            const highlight =
-              Boolean(myEmail && row.email && row.email === myEmail) ||
-              Boolean(myName && row.name && row.name === myName);
             return renderRankingsSleeperRow({
               rank: row.rank,
               flag: alpha2ToFlagEmoji(alpha2),
               label: row.name || "—",
               points: row.score,
-              highlight,
+              highlight: false,
             });
           }
         );
       }
 
-      function renderMemberRankingsPage({ nations, sleepers, session, myEmail, myName, myCountryRaw }) {
-        const myIndex = findMySleeperIndex(sleepers, {
-          email: myEmail,
-          name: myName,
-          country: myCountryRaw,
-        });
-        const myRow = myIndex >= 0 ? sleepers[myIndex] : null;
-        const myRank = myIndex >= 0 ? myIndex + 1 : null;
-        const myScore =
-          myRow?.score ??
-          (myEmail ? computeBestSleepScore(myEmail) : null);
+      function renderMemberRankingsPage({
+        nations,
+        sleepers,
+        viewer,
+        myEmail,
+        myName,
+        myCountryRaw,
+      }) {
+        const eligible = Boolean(viewer?.eligible);
+        const myIndex = eligible
+          ? findMySleeperIndex(sleepers, { email: myEmail }, { emailOnly: true })
+          : -1;
+        const myRank = eligible && viewer?.rank != null ? viewer.rank : null;
+        const myScore = eligible && viewer?.score != null ? viewer.score : null;
         const { alpha2: myAlpha2 } = resolveCountryForFlag(myCountryRaw);
 
         const rankEl = $("rankingsMyRankValue");
@@ -6242,21 +6601,17 @@
         const aroundList = $("rankingsAroundList");
         const aroundEmpty = $("rankingsAroundEmpty");
         const aroundMoreBtn = $("rankingsAroundMoreBtn");
-        if (myIndex >= 0) {
+        if (aroundMoreBtn) aroundMoreBtn.hidden = true;
+
+        if (eligible && myIndex >= 0) {
           if (aroundEmpty) aroundEmpty.hidden = true;
           if (aroundList) aroundList.hidden = false;
-          if (aroundMoreBtn) {
-            aroundMoreBtn.hidden = sleepers.length <= 5;
-            aroundMoreBtn.textContent = rankingsMemberExpand.around ? "View less ›" : "View more ›";
+          const aroundRows = [];
+          if (myIndex > 0) aroundRows.push({ ...sleepers[myIndex - 1], isYou: false });
+          aroundRows.push({ ...sleepers[myIndex], isYou: true });
+          if (myIndex < sleepers.length - 1) {
+            aroundRows.push({ ...sleepers[myIndex + 1], isYou: false });
           }
-          const windowSize = rankingsMemberExpand.around ? 10 : 2;
-          const start = Math.max(0, myIndex - windowSize);
-          const end = Math.min(sleepers.length, myIndex + windowSize + 1);
-          const aroundRows = sleepers.slice(start, end).map((row, offset) => ({
-            ...row,
-            rank: start + offset + 1,
-            isYou: start + offset === myIndex,
-          }));
           renderRankingsPanelList(aroundList, aroundRows, (row) => {
             const { alpha2 } = resolveCountryForFlag(row.country);
             return renderRankingsSleeperRow({
@@ -6274,8 +6629,10 @@
             aroundList.hidden = true;
             aroundList.replaceChildren();
           }
-          if (aroundEmpty) aroundEmpty.hidden = false;
-          if (aroundMoreBtn) aroundMoreBtn.hidden = true;
+          if (aroundEmpty) {
+            aroundEmpty.hidden = false;
+            aroundEmpty.textContent = viewer?.message || RANKING_INELIGIBLE_MESSAGE;
+          }
         }
 
         const topMoreBtn = $("rankingsTopMoreBtn");
@@ -6286,12 +6643,12 @@
         }
         renderRankingsPanelList(
           $("rankingsTopSleepersList"),
-          sleepers.slice(0, topLimit).map((row, index) => ({ ...row, rank: index + 1 })),
+          sleepers.slice(0, topLimit),
           (row) => {
             const { alpha2 } = resolveCountryForFlag(row.country);
-            const highlight =
-              Boolean(myEmail && row.email && row.email === myEmail) ||
-              Boolean(myName && row.name && row.name === myName);
+            const highlight = Boolean(
+              myEmail && row.email && normalizeEmail(row.email) === normalizeEmail(myEmail)
+            );
             return renderRankingsSleeperRow({
               rank: row.rank,
               flag: alpha2ToFlagEmoji(alpha2),
@@ -6299,7 +6656,8 @@
               points: row.score,
               highlight,
             });
-          }
+          },
+          eligible ? "No ranked sleepers yet." : RANKING_INELIGIBLE_MESSAGE
         );
 
         const nationsMoreBtn = $("rankingsNationsMoreBtn");
@@ -6313,22 +6671,22 @@
           nationsGrid.replaceChildren();
           const nationRows = nations.slice(0, nationsLimit);
           if (!nationRows.length) {
-          const empty = document.createElement("li");
+            const empty = document.createElement("li");
             empty.className = "rankings-empty-row";
             empty.style.gridColumn = "1 / -1";
             empty.textContent = "No nations ranked yet.";
             nationsGrid.appendChild(empty);
           } else {
-            nationRows.forEach((row, index) => {
+            for (const row of nationRows) {
               const { alpha2, displayName } = resolveCountryForFlag(row.country);
               nationsGrid.appendChild(
                 renderRankingsNationCell({
-                  rank: index + 1,
+                  rank: row.rank,
                   flag: alpha2ToFlagEmoji(alpha2),
                   label: displayName || row.country || "—",
                 })
               );
-            });
+            }
           }
         }
       }
@@ -6365,7 +6723,7 @@
         guestLayout.hidden = true;
         memberLayout.hidden = true;
 
-        let { nations, sleepers, error } = await fetchGlobalRankings();
+        let { nations, sleepers, viewer, error } = await fetchGlobalRankings();
         if (error) {
           toast("danger", "Could not load rankings from the server. Check your connection and try again.");
         }
@@ -6373,13 +6731,13 @@
         if (loadingEl) loadingEl.hidden = true;
         if (guest) {
           guestLayout.hidden = false;
-          renderGuestRankingsPage({ nations, sleepers, myCountry, myEmail, myName });
+          renderGuestRankingsPage({ nations, sleepers });
         } else {
           memberLayout.hidden = false;
           renderMemberRankingsPage({
             nations,
             sleepers,
-            session,
+            viewer,
             myEmail,
             myName,
             myCountryRaw,
@@ -6411,52 +6769,20 @@
             detEl.classList.add("sleep-score-empty");
           }
           setSleepLevelImage(null);
+          applySleepScorePageUi(session);
         };
 
         if (!session) {
-          showPlainDetail("Log in to see your sleep score.");
-          return;
-        }
-        const users = loadUsers();
-        const user = users[session.email] || {};
-        const age = user.age != null ? user.age : session.age;
-        const { bucket } = getSleepBucket(session.email);
-        const list = bucket.history || [];
-        const latest = list.length ? list[list.length - 1] : null;
-        if (!latest || !latest.bedAt) {
-          showPlainDetail("Record at least one sleep session (bedtime → wakeup) to get a score.");
-          return;
-        }
-        const actualH = bedAtToSleepHours(latest.bedAt);
-        if (actualH == null) {
-          showPlainDetail("Could not read your last bedtime.");
-          return;
-        }
-        const hoursSlept = Math.max(0, (Number(latest.durationMs) || 0) / (1000 * 60 * 60));
-        const [durLo] = recommendedSleepRangeHoursClient(age);
-        const score = computeLatestSleepScore(session.email);
-        if (score == null) {
-          showPlainDetail("Could not calculate sleep score.");
+          showPlainDetail("Sign in or start as Guest from the home screen to see your sleep score.");
           return;
         }
 
-        const displayPoint = score;
-        const displayLevel = levelFromSleepScore(score);
-        const lvForImage = Math.max(1, Math.min(5, displayLevel));
-
-        if (pointDisplay) pointDisplay.hidden = false;
-        if (valEl) valEl.textContent = String(displayPoint);
-        if (lvlEl) {
-          lvlEl.hidden = true;
-          lvlEl.textContent = `Lv.${lvForImage}`;
+        if (isGuestSession(session)) {
+          renderGuestSleepScorePage(session);
+        } else {
+          renderMemberSleepScorePage(session);
         }
-        setSleepLevelImage(lvForImage);
-        renderSleepScoreDetailStructured({
-          hoursSlept,
-          score: displayPoint,
-          level: displayLevel,
-          age,
-        });
+        applySleepScorePageUi(session);
       }
 
       $("feedbackRecommendationNavBtn").addEventListener("click", () => {
@@ -6692,10 +7018,11 @@
       });
 
       $("bedtimeBtn").addEventListener("click", () => handleTwoStepClick("bedtime", startBedtime));
-      $("wakeupBtn").addEventListener("click", () => handleTwoStepClick("wakeup", recordWakeup));
+      $("wakeupBtn").addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        handleTwoStepClick("wakeup", recordWakeup);
+      });
 
-      window.addEventListener("keydown", onGlobalSleepWakeupKey, true);
-      window.addEventListener("touchstart", onGlobalSleepWakeupTouch, { capture: true, passive: true });
       document.addEventListener("visibilitychange", onDocumentVisibilityChange);
       window.addEventListener("pagehide", onWindowPageHide);
       window.addEventListener("focus", refreshSleepTimerIfTracking);

@@ -10,6 +10,12 @@ Start Bedtime / Wake Up button widths (3:1 vs 1:3) follow sleep state in the fro
   templates/index.html — CSS `.sleep-controls` / `.bedtime-priority` / `.wakeup-priority`
   and JavaScript `setButtonPriorityStyles()`.
 
+Sleep Point & Level UI is rendered entirely in the browser:
+  templates/index.html — `#sleepScorePage`, `renderSleepScorePage()`, `renderSleepScoreDetailStructured()`.
+  Guest vs member: `isGuestSession()`, `applySleepScorePageUi()` (guest notice on score page);
+  rankings use `renderCountryRankingsPage()` with separate guest/member layouts.
+  There is no script.js; all client logic lives inline in templates/index.html.
+
 Login/signup password eye toggle (click to show/hide) is finalized in this file: see
 `_inject_index_password_toggle` and `_INDEX_PASSWORD_TOGGLE_SCRIPT`.
 
@@ -46,15 +52,19 @@ from pathlib import Path
 
 from flask import Flask, abort, jsonify, render_template, request, send_from_directory, url_for
 
-from account_store import get_account_store
+from account_store import GUEST_ACCOUNT_EMAIL, get_account_store, is_guest_account_email
 from nickname_validation import FORBIDDEN_TERMS, nickname_validation_error
-from sleep_scoring import compute_best_sleep_score, merge_sleep_buckets
+from sleep_scoring import (
+    build_ranking_leaderboard,
+    merge_sleep_buckets,
+    parse_as_of_datetime,
+)
 
 logger = logging.getLogger(__name__)
 
 MIN_USER_AGE = 10
 MAX_USER_AGE = 24
-GUEST_EMAIL = "__guest__@zzzetox.local"
+GUEST_EMAIL = GUEST_ACCOUNT_EMAIL
 COUNTRY_ANONYMOUS = "ANONYMOUS"
 
 ROOT = Path(__file__).resolve().parent
@@ -274,6 +284,8 @@ def api_auth_signup():
 
     if not email:
         return jsonify({"ok": False, "error": "Email is required."}), 400
+    if is_guest_account_email(email):
+        return jsonify({"ok": False, "error": "This User ID is reserved for guest mode."}), 400
     if not name:
         return jsonify({"ok": False, "error": "Nickname is required."}), 400
     if not password_hash:
@@ -381,6 +393,8 @@ def api_auth_migrate_local():
 
     if not email or not password_hash or not name:
         return jsonify({"ok": False, "error": "Invalid migration payload."}), 400
+    if is_guest_account_email(email):
+        return jsonify({"ok": False, "error": "Guest accounts cannot be migrated to the server."}), 400
 
     store = get_account_store()
     if store.get_user(email):
@@ -435,6 +449,8 @@ def api_account_sleep():
         payload, status = auth
         return jsonify(payload), status
     email = auth
+    if is_guest_account_email(email):
+        return jsonify({"ok": False, "error": "Guest accounts use device-local data only."}), 403
     store = get_account_store()
 
     if request.method == "GET":
@@ -999,69 +1015,51 @@ def _norm_country_key(country: str) -> str:
     )
 
 
-def _build_global_rankings(viewer_email: str | None = None) -> dict:
+def _build_global_rankings(viewer_email: str | None = None, as_of=None) -> dict:
     store = get_account_store()
-    by_country: dict[str, dict] = {}
-    sleepers: list[dict] = []
-    viewer_email_norm = str(viewer_email or "").strip().lower()
+    ref = parse_as_of_datetime(as_of)
+    participants: list[dict] = []
 
     for row in store.list_ranking_participants():
         email = str(row.get("email") or "").strip().lower()
-        if not email or email == GUEST_EMAIL:
+        if not email or is_guest_account_email(email):
             continue
         country_raw = str(row.get("country") or "").strip()
         if _norm_country_key(country_raw) == _norm_country_key(COUNTRY_ANONYMOUS):
             country_raw = ""
-        age = _parse_age(row.get("age"))
-        bucket = row.get("bucket") if isinstance(row.get("bucket"), dict) else {}
-        score = compute_best_sleep_score(age, bucket)
-        if score is None or score <= 0:
-            continue
-
-        name = str(row.get("name") or "").strip() or "Sleeper"
-        sleepers.append(
+        participants.append(
             {
                 "email": email,
-                "name": name,
+                "name": str(row.get("name") or "").strip() or "Sleeper",
+                "age": _parse_age(row.get("age")),
                 "country": country_raw,
-                "score": int(score),
+                "bucket": row.get("bucket") if isinstance(row.get("bucket"), dict) else {},
             }
         )
 
-        if country_raw:
-            country = country_raw
-            prev = by_country.get(country) or {"sum": 0, "count": 0}
-            prev["sum"] += int(score)
-            prev["count"] += 1
-            by_country[country] = prev
-
-    nations = []
-    for country, agg in by_country.items():
-        avg = round(agg["sum"] / agg["count"])
-        if avg > 0:
-            nations.append({"country": country, "score": avg})
-
-    nations.sort(key=lambda x: (-x["score"], x["country"].lower()))
-    sleepers.sort(key=lambda x: (-x["score"], x["name"].lower()))
-
-    sleeper_rows: list[dict] = []
-    for s in sleepers[:50]:
-        row = {k: v for k, v in s.items() if k != "email"}
-        if viewer_email_norm and s["email"] == viewer_email_norm:
-            row["email"] = s["email"]
-        sleeper_rows.append(row)
-
-    return {
-        "nations": nations[:50],
-        "sleepers": sleeper_rows,
-    }
+    return build_ranking_leaderboard(participants, ref, viewer_email=viewer_email)
 
 
 @app.route("/api/rankings", methods=["GET"])
 def api_rankings():
-    """Public global sleep challenge rankings (nations + top sleepers)."""
+    """Global sleep challenge rankings (last 7 days; members only on client)."""
     viewer = _optional_auth_email()
-    data = _build_global_rankings(viewer_email=viewer)
+    if viewer and is_guest_account_email(viewer):
+        return jsonify(
+            {
+                "ok": True,
+                "sleepers": [],
+                "nations": [],
+                "viewer": {
+                    "eligible": False,
+                    "message": "",
+                    "rank": None,
+                    "score": None,
+                },
+            }
+        )
+    as_of = request.args.get("asOf")
+    data = _build_global_rankings(viewer_email=viewer, as_of=as_of)
     return jsonify({"ok": True, **data})
 
 

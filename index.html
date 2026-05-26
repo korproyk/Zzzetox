@@ -1584,7 +1584,7 @@
                   <path d="M32 10v7M32 47v7M10 32h7M47 32h7M16.5 16.5l5 5M42.5 42.5l5 5M16.5 47.5l5-5M42.5 21.5l5-5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
                 </svg>
               </span>
-              <span class="sleep-btn-label">Are U Awoke?</span>
+              <span class="sleep-btn-label">I'm Awake</span>
               <span class="sleep-btn-dots" aria-label="0 of 2 clicks">
                 <span class="sleep-dot"></span>
                 <span class="sleep-dot"></span>
@@ -1929,6 +1929,57 @@
 
       function nowISO() {
         return new Date().toISOString();
+      }
+
+      const APP_DATETIME_LOCALE = "en-US";
+
+      const APP_DATETIME_FORMAT = {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      };
+
+      const APP_DATE_FORMAT = {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      };
+
+      const APP_TIME_FORMAT = {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      };
+
+      const APP_MONTH_SHORT_FORMAT = {
+        month: "short",
+      };
+
+      function toAppDate(value) {
+        if (value instanceof Date) return value;
+        const d = new Date(value);
+        return Number.isNaN(d.getTime()) ? null : d;
+      }
+
+      function formatAppDateTime(value) {
+        const d = toAppDate(value);
+        if (!d) return "—";
+        return d.toLocaleString(APP_DATETIME_LOCALE, APP_DATETIME_FORMAT);
+      }
+
+      function formatAppDate(value) {
+        const d = toAppDate(value);
+        if (!d) return "—";
+        return d.toLocaleDateString(APP_DATETIME_LOCALE, APP_DATE_FORMAT);
+      }
+
+      function formatAppTime(value) {
+        const d = toAppDate(value);
+        if (!d) return "—";
+        return d.toLocaleTimeString(APP_DATETIME_LOCALE, APP_TIME_FORMAT);
       }
 
       function normalizeEmail(email) {
@@ -2507,12 +2558,12 @@
         if (active) {
           const elapsedMs = Date.now() - active.getTime();
           timerEl.textContent = formatDuration(elapsedMs);
-          metaEl.textContent = `Bedtime started: ${active.toLocaleString()} | Tracking continues until you press wakeup.`;
+          metaEl.textContent = `Bedtime started: ${formatAppDateTime(active)} | Tracking continues until you press wakeup.`;
         } else {
           timerEl.textContent = "00:00:00";
           const recent = bucket.history[bucket.history.length - 1];
           if (recent) {
-            metaEl.textContent = `Recent sleep: ${recent.durationText} (recorded at ${new Date(recent.wokeAt).toLocaleString()})`;
+            metaEl.textContent = `Recent sleep: ${recent.durationText} (recorded at ${formatAppDateTime(recent.wokeAt)})`;
           } else {
             metaEl.textContent = "No records yet. Press Start Bedtime to create your first record.";
           }
@@ -2735,7 +2786,7 @@
         const mm = Math.round((h24 - hh) * 60);
         const d = new Date();
         d.setHours(hh, mm, 0, 0);
-        return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+        return formatAppTime(d);
       }
 
       /** Hours between actual and recommended bedtime (same night scale). */
@@ -2835,14 +2886,14 @@
         if (!session) {
           valEl.textContent = "—";
           lvlEl.textContent = "Lv.—";
-          detEl.textContent = "Log in to see your sleep score.";
+          detEl.textContent = "Sign in or start as Guest from the home screen to see your sleep score.";
           detEl.classList.add("sleep-score-empty");
           setSleepLevelImage(null);
           return;
         }
         const users = loadUsers();
         const user = users[session.email] || {};
-        const age = user.age;
+        const age = user.age != null ? user.age : session.age;
         const { bucket } = getSleepBucket(session.email);
         const list = bucket.history || [];
         const latest = list.length ? list[list.length - 1] : null;

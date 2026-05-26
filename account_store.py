@@ -14,6 +14,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent
 DEFAULT_DATA_DIR = ROOT / "data"
 TOKEN_TTL_DAYS = 90
+GUEST_ACCOUNT_EMAIL = "__guest__@zzzetox.local"
 
 
 def resolve_data_dir() -> Path:
@@ -43,6 +44,10 @@ def _utc_now_iso() -> str:
 
 def _normalize_email(email: str) -> str:
     return str(email or "").strip().lower()
+
+
+def is_guest_account_email(email: str) -> bool:
+    return _normalize_email(email) == GUEST_ACCOUNT_EMAIL
 
 
 class AccountStore:
@@ -132,6 +137,8 @@ class AccountStore:
         created_at: str | None = None,
     ) -> dict[str, Any]:
         email = _normalize_email(email)
+        if is_guest_account_email(email):
+            raise ValueError("guest_account_reserved")
         created = created_at or _utc_now_iso()
         with self._lock:
             conn = self._connect()
@@ -253,8 +260,10 @@ class AccountStore:
                     SELECT u.email, u.name, u.age, u.country, s.payload
                     FROM users u
                     LEFT JOIN sleep_data s ON s.email = u.email
+                    WHERE LOWER(u.email) != ?
                     ORDER BY u.created_at ASC
-                    """
+                    """,
+                    (GUEST_ACCOUNT_EMAIL,),
                 ).fetchall()
                 out: list[dict[str, Any]] = []
                 for row in rows:
@@ -283,6 +292,8 @@ class AccountStore:
 
     def save_sleep_bucket(self, email: str, bucket: dict[str, Any]) -> None:
         email = _normalize_email(email)
+        if is_guest_account_email(email):
+            raise ValueError("guest_account_reserved")
         payload = json.dumps(bucket, ensure_ascii=False)
         updated = _utc_now_iso()
         with self._lock:

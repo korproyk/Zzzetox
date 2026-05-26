@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 _HOUR_EPS = 1.0 / 3600.0
+MAX_SCORABLE_SLEEP_HOURS = 16.0
+RANKING_WINDOW_DAYS = 7
+RANKING_MIN_RECORDS = 3
+RANKING_INELIGIBLE_MESSAGE = "Need at least 3 sleep records in the last 7 days."
 
 
 def recommended_sleep_range_hours(age: int | None) -> tuple[float, float]:
@@ -68,6 +72,59 @@ def is_near_zero_sleep_hours(hours: float) -> bool:
     return hours <= _HOUR_EPS
 
 
+def effective_sleep_hours_from_ms(duration_ms: float | int | None) -> float:
+    """Clamp abnormally long sleeps so scoring stays stable."""
+    hours = max(0.0, float(duration_ms or 0) / 3_600_000)
+    if hours > MAX_SCORABLE_SLEEP_HOURS:
+        return MAX_SCORABLE_SLEEP_HOURS
+    return hours
+
+
+def parse_iso_datetime(iso: str | None) -> datetime | None:
+    if not iso:
+        return None
+    try:
+        return datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_as_of_datetime(as_of: str | None) -> datetime:
+    parsed = parse_iso_datetime(as_of) if as_of else None
+    if parsed is not None:
+        return parsed
+    return datetime.now(timezone.utc)
+
+
+def _to_utc_timestamp(dt: datetime) -> float:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc).timestamp()
+    return dt.astimezone(timezone.utc).timestamp()
+
+
+def history_indices_in_window(
+    history: list,
+    as_of: datetime,
+    days: int = RANKING_WINDOW_DAYS,
+) -> list[int]:
+    """Indices of nights whose bedAt falls in (as_of - days, as_of] (UTC comparison)."""
+    if not isinstance(history, list):
+        return []
+    end_ts = _to_utc_timestamp(as_of)
+    start_ts = end_ts - days * 86400
+    indices: list[int] = []
+    for i, entry in enumerate(history):
+        if not isinstance(entry, dict) or not entry.get("bedAt"):
+            continue
+        bed = parse_iso_datetime(str(entry["bedAt"]))
+        if bed is None:
+            continue
+        bed_ts = _to_utc_timestamp(bed)
+        if start_ts < bed_ts <= end_ts:
+            indices.append(i)
+    return indices
+
+
 def duration_hours_score(hours: float, lo: float, hi: float) -> int:
     if is_near_zero_sleep_hours(hours):
         return 0
@@ -108,7 +165,7 @@ def _score_history_entry(age: int | None, history: list, index: int) -> int | No
     if actual_h is None:
         return None
     rec_h = recommended_bedtime_sleep_hours(age)
-    hours_slept = max(0.0, float(entry.get("durationMs") or 0) / 3_600_000)
+    hours_slept = effective_sleep_hours_from_ms(entry.get("durationMs"))
     dur_lo, dur_hi = recommended_sleep_range_hours(age)
     prefix = history[: index + 1]
 
@@ -126,6 +183,185 @@ def compute_latest_sleep_score(age: int | None, bucket: dict) -> int | None:
     if not history:
         return None
     return _score_history_entry(age, history, len(history) - 1)
+
+
+def compute_weekly_average_sleep_point(
+    age: int | None,
+    bucket: dict,
+    as_of: datetime | None = None,
+) -> int:
+    """Average Sleep Point across scorable nights in the last 7 days (device asOf time)."""
+    history = bucket.get("history") if isinstance(bucket.get("history"), list) else []
+    if not history:
+        return 0
+    ref = as_of or datetime.now(timezone.utc)
+    indices = history_indices_in_window(history, ref, RANKING_WINDOW_DAYS)
+    total = 0
+    count = 0
+    for i in indices:
+        score = _score_history_entry(age, history, i)
+        if score is None:
+            continue
+        total += int(score)
+        count += 1
+    if count == 0:
+        return 0
+    return round(total / count)
+
+
+def ranking_user_stats(
+    age: int | None,
+    bucket: dict,
+    as_of: datetime,
+) -> dict | None:
+    """Weekly ranking stats for one user; None when fewer than RANKING_MIN_RECORDS in window."""
+    history = bucket.get("history") if isinstance(bucket.get("history"), list) else []
+    indices = history_indices_in_window(history, as_of, RANKING_WINDOW_DAYS)
+    scores: list[int] = []
+    for i in indices:
+        score = _score_history_entry(age, history, i)
+        if score is None:
+            continue
+        scores.append(int(score))
+    if len(scores) < RANKING_MIN_RECORDS:
+        return None
+    weekly_sum = sum(scores)
+    weekly_avg = round(weekly_sum / len(scores))
+    return {
+        "weekly_sum": weekly_sum,
+        "weekly_avg": weekly_avg,
+        "record_count": len(scores),
+    }
+
+
+def build_ranking_leaderboard(
+    participants: list[dict],
+    as_of: datetime,
+    viewer_email: str | None = None,
+) -> dict:
+    """Sort eligible users by 7-day Sleep Point sum; build nations from weekly averages."""
+    users: list[dict] = []
+    viewer_email_norm = str(viewer_email or "").strip().lower()
+
+    for row in participants:
+        email = str(row.get("email") or "").strip().lower()
+        if not email:
+            continue
+        age = row.get("age")
+        if age is not None:
+            try:
+                age = int(age)
+            except (TypeError, ValueError):
+                age = None
+        bucket = row.get("bucket") if isinstance(row.get("bucket"), dict) else {}
+        stats = ranking_user_stats(age, bucket, as_of)
+        if stats is None:
+            continue
+        country_raw = str(row.get("country") or "").strip()
+        name = str(row.get("name") or "").strip() or "Sleeper"
+        users.append(
+            {
+                "email": email,
+                "name": name,
+                "country": country_raw,
+                "weeklySleepPoint": int(stats["weekly_sum"]),
+                "weeklyAvg": int(stats["weekly_avg"]),
+                "recordCount": int(stats["record_count"]),
+            }
+        )
+
+    users.sort(
+        key=lambda u: (
+            -u["weeklySleepPoint"],
+            -u["recordCount"],
+            u["name"].lower(),
+        )
+    )
+
+    sleepers: list[dict] = []
+    for rank, u in enumerate(users, start=1):
+        row: dict = {
+            "rank": rank,
+            "name": u["name"],
+            "country": u["country"],
+            "score": u["weeklySleepPoint"],
+        }
+        if viewer_email_norm and u["email"] == viewer_email_norm:
+            row["email"] = u["email"]
+        sleepers.append(row)
+
+    by_country: dict[str, list[int]] = {}
+    for u in users:
+        country = u["country"]
+        if not country:
+            continue
+        by_country.setdefault(country, []).append(int(u["weeklyAvg"]))
+
+    nation_rows: list[dict] = []
+    for country, avgs in by_country.items():
+        nation_rows.append(
+            {
+                "country": country,
+                "score": round(sum(avgs) / len(avgs)),
+            }
+        )
+    nation_rows.sort(key=lambda x: (-x["score"], x["country"].lower()))
+
+    nations: list[dict] = []
+    for rank, row in enumerate(nation_rows[:50], start=1):
+        nations.append({"rank": rank, "country": row["country"]})
+
+    viewer: dict = {
+        "eligible": False,
+        "message": RANKING_INELIGIBLE_MESSAGE,
+        "rank": None,
+        "score": None,
+    }
+    if viewer_email_norm:
+        for i, u in enumerate(users):
+            if u["email"] != viewer_email_norm:
+                continue
+            viewer = {
+                "eligible": True,
+                "message": "",
+                "rank": i + 1,
+                "score": u["weeklySleepPoint"],
+            }
+            break
+
+    return {
+        "sleepers": sleepers[:50],
+        "nations": nations[:50],
+        "viewer": viewer,
+    }
+
+
+def compute_total_growth_points(age: int | None, bucket: dict) -> int:
+    """Sum of Sleep Points for every recorded night since signup."""
+    history = bucket.get("history") if isinstance(bucket.get("history"), list) else []
+    total = 0
+    for i in range(len(history)):
+        score = _score_history_entry(age, history, i)
+        if score is None or score <= 0:
+            continue
+        total += int(score)
+    return total
+
+
+def sum_hours_last_nights(
+    history: list,
+    nights: int = 7,
+    as_of: datetime | None = None,
+) -> float:
+    ref = as_of or datetime.now(timezone.utc)
+    indices = history_indices_in_window(history if isinstance(history, list) else [], ref, nights)
+    total = 0.0
+    for i in indices:
+        entry = history[i]
+        if not isinstance(entry, dict):
+            continue
+        total += effective_sleep_hours_from_ms(entry.get("durationMs"))
+    return total
 
 
 def compute_best_sleep_score(age: int | None, bucket: dict) -> int | None:
